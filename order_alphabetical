@@ -1,0 +1,49 @@
+#written by Claude, orders a given twt file in alphabetical order
+#eliminates duplicates
+import sys
+
+
+def sort_file_keep_header(input_path, output_path=None):
+    with open(input_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    # Split off leading comment block (only comments at the very top)
+    i = 0
+    while i < len(lines) and lines[i].lstrip().startswith("#"):
+        i += 1
+
+    header = lines[:i]
+    body = lines[i:]
+
+    # Drop duplicates (comparing stripped content) and blank lines
+    seen = set()
+    unique_body = []
+    for line in body:
+        key = line.strip()
+        if not key:  # skip empty lines
+            continue
+        if key not in seen:
+            seen.add(key)
+            unique_body.append(line)
+
+    # Sort remaining lines alphabetically (case-insensitive)
+    body_sorted = sorted(unique_body, key=lambda l: l.strip().lower())
+
+    output_path = output_path or input_path
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.writelines(header)
+        f.writelines(
+            line if line.endswith("\n") else line + "\n" for line in body_sorted
+        )
+
+    print(f"{len(lines) - len(header)} lines processed -> {len(body_sorted)} unique lines written.")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python sort_file.py input.txt [output.txt]")
+        sys.exit(1)
+    in_path = sys.argv[1]
+    out_path = sys.argv[2] if len(sys.argv) > 2 else None
+    sort_file_keep_header(in_path, out_path)
+    print(f"Done. Sorted file written to {out_path or in_path}")

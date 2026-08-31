@@ -23,13 +23,13 @@ altra;otra
 altre;otras
 altri;otros
 altro;otro
-ama; ama
-amano; aman
+ama;ama
+amano;aman
 amica;amiga
 amiche;amigas
 amici;amigos
 amico;amigo
-amo; amo
+amo;amo
 amore;amor
 amori;amores
 andare;andar
@@ -82,15 +82,15 @@ buona;buena
 buone;buenas
 buoni;buenos
 buono;bueno
-cammini; cominos 
-cammino; camino
+cammini;caminos
+cammino;camino
 campagna;campaña
 campagne;campañas
 campo;campo
-cane; can 
-cani; canes
-canta; canta
-cantano; cantan
+cane;can
+cani;canes
+canta;canta
+cantano;cantan
 cantante;cantante
 cantanti;cantantes
 cantare;cantar
@@ -119,14 +119,14 @@ certa;cierta
 certe;ciertas
 certi;ciertos
 certo;cierto
-chiama; llama
-chiamano; llaman 
+chiama;llama
+chiamano;llaman
 chiamare;llamar
 chiamata;llamada
 chiamate;llamadas
 chiamati;llamados
 chiamato;llamado
-chiamo; llamo
+chiamo;llamo
 chiara;clara
 chiare;claras
 chiari;claros
@@ -137,13 +137,13 @@ chiedere;querer
 chiesa;iglesia
 chiese;iglesias
 cielo;cielo
-cipolla; cebolla
-cipolle; cebollas
+cipolla;cebolla
+cipolle;cebollas
 città;ciudad
 classe;clase
 classi;clases
 cocchi;cocos
-cocco;coco 
+cocco;coco
 cognati;cuñados
 cognato;cuñado
 colore;color
@@ -164,8 +164,8 @@ conigli;conejos
 coniglio;conejo
 consigli;consejos
 consiglio;consejo
-coppa; copa 
-coppe; copas
+coppa;copa
+coppe;copas
 coraggio;coraje
 corpi;cuerpos
 corpo;cuerpo
@@ -215,10 +215,9 @@ donar;donar
 donde;dónde
 doppiaggi;doblajes
 doppiaggio;doblaje
-dorme; duerme
-dormire; dormir
+dorme;duerme
 dormire;dormir
-dormono; duermen
+dormono;duermen
 dura;dura
 dure;duras
 duri;duros
@@ -290,10 +289,9 @@ giovani;jovenes
 girare;girar
 giudice;juez
 giugno;junio
-giusta; justa
-giuste; justas
-giusti; justos
-giusto; justo
+giusta;justa
+giuste;justas
+giusti;justos
 giusto;justo
 granaio;granero
 grande;grande
@@ -323,8 +321,8 @@ iniziati;iniciados
 iniziato;iniciado
 insegnare;enseñar
 insegnata;enseñada
-insegnate;enseñade
-insegnati;enseñadi
+insegnate;enseñadas
+insegnati;enseñados
 insegnato;enseñado
 intera;entera
 intere;enteras
@@ -343,13 +341,13 @@ latte;leche
 latti;leches
 lavare;lavar
 lavorare;trabajar
-legge; lee
+legge;lee
 legge;ley
 leggere;leer
 leggero;ligero
 leggi;leyes
-leggo; leo 
-leggono; leen 
+leggo;leo
+leggono;leen
 legni;leños
 legno;leño
 lenta;lenta
@@ -372,10 +370,10 @@ luce;luz
 luci;luces
 luna;luna
 lune;lunas
-lupa; loba
-lupe; lobas
-lupi; lobos
-lupo; lobo
+lupa;loba
+lupe;lobas
+lupi;lobos
+lupo;lobo
 lussi;lujos
 lusso;lujo
 madre;madre
@@ -396,8 +394,8 @@ mese;mes
 mesi;meses
 messaggi;mensajes
 messaggio;mensaje
-mette; mete 
-mettono; meten
+mette;mete
+mettono;meten
 mezza;media
 mezze;medias
 mezzi;medios
@@ -454,15 +452,15 @@ nervoso;nervioso
 nervosos;nerviosos
 neve;nieve
 nevi;nieves
-noi;nos 
+noi;nos
 nome;nombre
 nomi;nombres
 normale;normal
 normali;normales
-nostra; nuestra
-nostre; nuestras
-nostri; nuestros
-nostro; nuestro
+nostra;nuestra
+nostre;nuestras
+nostri;nuestros
+nostro;nuestro
 notizia;noticia
 notizie;noticias
 notte;noche
@@ -489,7 +487,7 @@ omero;hombro
 onda;onda
 onde;ondas
 onore;honor
-onori;onores
+onori;honores
 opera;obra
 operai;obreros
 operaio;obrero
@@ -508,7 +506,7 @@ ore;horas
 orecchia;oreja
 orecchie;orejas
 oro;oro
-orsi;osos 
+orsi;osos
 orso;oso
 ospedale;hospital
 ospedali;hospitales
@@ -523,7 +521,7 @@ padri;padres
 paesaggi;paisajes
 paesaggio;paisaje
 paese;paises
-paese;país 
+paese;país
 pagare;pagar
 paglia;paja
 paglie;pajas
@@ -548,7 +546,7 @@ passione;pasión
 passioni;pasiones
 passo;paso
 patria;patria
-peggiore;peor 
+peggiore;peor
 peggiori;peores
 pelle;piel
 pelli;pieles
@@ -595,11 +593,12 @@ poca;poca
 poche;pocas
 pochi;pocos
 poco;poco
+poi;pues
 polli;pollos
 pollo;pollo
 polso;pulso
-pone; pone
-pongono; ponen
+pone;pone
+pongono;ponen
 ponte;puente
 ponti;puentes
 porta;puerta
@@ -700,10 +699,10 @@ scaldare;escaldar
 scarpa;escarpa
 schiavo;esclavo
 scoprire;descubrir
-scrive; ecribe
+scrive;ecribe
 scrivere;escribir
-scrivo; escribo
-scrivono; escriben
+scrivo;escribo
+scrivono;escriben
 scudo;escudo
 scuola;escuela
 scuole;escuelas
@@ -734,7 +733,7 @@ settimana;semana
 sicuro;seguro
 signora;señora
 signore;señor
-sogliono; suelen
+sogliono;suelen
 sognare;soñar
 sogni;sueños
 sogno;sueño
@@ -766,27 +765,25 @@ stare;estar
 stato;estado
 statua;estatua
 stazione;estación
-stazioni; estaciones 
+stazioni;estaciones
 stella;estrella
 stile;estilo
 stili;estilos
 stomaci;estómagos
 stomaco;estómago
-storia;historia
-storie;historias
 strada;estrada
 strana;extraña
 strane;extrañas
 strani;extraños
 strano;extraño
-stretto; estrecho
+stretto;estrecho
 strumento;instrumento
 studente;estudiante
 studenti;estudiantes
 studiare;estudiar
 studio;estudio
 sudicio;sucio
-suole; suele
+suole;suele
 tanta;tanta
 tante;tantas
 tanti;tantos
@@ -797,13 +794,13 @@ tavole;tablas
 tempi;tiempos
 tempo;tiempo
 tenere;tener
-tengo; tengo
-tengono; tienen
+tengo;tengo
+tengono;tienen
 terra;tierra
 terre;tierras
 tessuti;tejidos
 tessuto;tejido
-tiene; tiene
+tiene;tiene
 tinta;tinta
 tinte;tintas
 torre;torre
@@ -840,7 +837,7 @@ uovo;huevo
 utile;útil
 utili;útiles
 uva;uva
-vacca;vaca 
+vacca;vaca
 vacche;vacas
 vecchi;viejos
 vecchia;vieja
@@ -850,15 +847,15 @@ vedere;ver
 veloce;veloz
 veloci;veloces
 vendere;vender
-vengo; vengo
-vengono; vienen
+vengo;vengo
+vengono;vienen
 venire;venir
 venite;venid
 venti;vientos
 vento;viento
 verde;verde
 verdi;verdes
-veritiero; verdadero
+veritiero;verdadero
 verità;verdad
 vestiti;vestidos
 vestito;vestido
@@ -868,7 +865,7 @@ vicina;vecina
 vicine;vecinas
 vicini;vecinos
 vicino;vecino
-viene; viene
+viene;viene
 vini;vinos
 vino;vino
 virtù;virtud

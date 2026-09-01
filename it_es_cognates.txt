@@ -223,7 +223,10 @@ dure;duras
 duri;duros
 duro;duro
 egli;él
+esempi;ejemplos
 esempio;ejemplo
+esemplare;ejemplar
+esemplari;ejemplares
 essere;ser
 età;edad
 facile;fácil
@@ -337,6 +340,9 @@ laghi;lagos
 lago;lago
 lana;lana
 largo;largo
+larghi;largos
+larga;larga
+larghe;largas
 latte;leche
 latti;leches
 lavare;lavar

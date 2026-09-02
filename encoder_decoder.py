@@ -128,22 +128,54 @@ class MultiHeadAttention(nn.Module):
 
             matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim    
 
-            V_times_softmax = torch.matmul(matt_softmax, V)
+            softmax_mult_V = torch.matmul(matt_softmax, V)
 
             # now I have to multiply with V, which has dimensions (sequence_length, dv) (thought of as a matrix)  
             # so first I concatenate on index 1 (corresponding to the h heads)
             # to do this rewriting I use view as before, but in the other direction 
             # (need contiguous before to rewrite the dimensions from scratch afterwards)
             
-            V_times_softmax = V_times_softmax.view.transpose(-3, -2).contiguous().view(batch_length, sequence_length, self.h * sequence_length)
+            softmax_mult_V  = softmax_mult_V.transpose(-3, -2).contiguous().view(batch_length, sequence_length, self.h * sequence_length)
 
             # and now I can project out to d_model dimension with W0 and return  
-            return self.WO(V_times_softmax)
+            return self.WO(softmax_mult_V)
 
 
 
 class MultiHeadCrossAttention(nn.Module):
-    pass
+    # to be used in the Decoder
+    # for comments see the MultiHeadAttention class
+
+    def __init__(self, d_model:int, dk:int, dv: int, h: int):
+        super().__init__()
+
+        # d_model embedding dimension
+        self.dk = dk
+        self.dv = dv
+        self.d_model = d_model
+        self.h = h 
+
+        self.WQ = nn.Linear(d_model, h * dk)
+        self.WK = nn.Linear(d_model, h * dk)
+        self.WV = nn.Linear(d_model, h * dv)
+        self.WO = nn.Linear(h * dv, d_model)
+        
+        def forward(self, queries, keys):
+            # no masking for cross-attention
+
+            batch_length, target_length, _ = keys.shape
+            _, input_length, _ = keys.shape
+
+            Q = self.WQ(queries).view(batch_length, input_length, self.h, self.dk).transpose(-3, -2)
+            K = self.WK(keys).view(batch_length, target_length, self.h, self.dk).transpose(-3, -2)
+            V = self.WV(keys).view(batch_length, target_length, self.h, self.dv).transpose(-3, -2)
+
+            matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
+            matt_softmax = torch.softmax(matt, -1)    
+            V_times_softmax = torch.matmul(matt_softmax, V).transpose(-3, -2).contiguous().view(batch_length, sequence_length, self.h * sequence_length)
+
+            return self.WO(V_times_softmax)
+    
 
 
 class Transformer(nn.Module):

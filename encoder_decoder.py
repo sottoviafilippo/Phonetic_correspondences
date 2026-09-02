@@ -14,6 +14,8 @@ import numpy as np
 
 # TO DO: define positional encoding as a module with a buffer for better efficiency
 
+# add sanity checks on dimensions?
+
 
 def PositionalEncoding(input_data : torch.Tensor, base_den: float = 500) -> torch.Tensor:
     # in the original paper what I call base_den is 10000 but here I reduce it because I have a much smaller number of tokens (around 20)
@@ -42,7 +44,17 @@ def PositionalEncoding(input_data : torch.Tensor, base_den: float = 500) -> torc
 
 
 class FeedForward(nn.Module):
-    pass
+    def __init__(self, d_model, d_hidden):
+        super().__init__()
+
+        self.network = nn.Sequential(
+            nn.Linear(d_model, d_hidden), 
+            nn.ReLU(),
+            nn.Linear(d_hidden, d_model)
+        )
+
+    def forward(self, x):
+        return self.network(x)
 
 
 class MultiHeadAttentionLayer(nn.Module):
@@ -204,6 +216,8 @@ class Transformer(nn.Module):
 
 
     def fit(self):
+
+        # use cross entropy for the loss
         pass
 
     def fit_from_txt(self):

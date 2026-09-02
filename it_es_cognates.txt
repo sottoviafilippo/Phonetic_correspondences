@@ -1,6 +1,7 @@
 #list of cognates (not necessarily the same exact meaning)
 #including plurals, verbs limited to infinitive, participles, present in third person singular and plural and first person
 #
+#in the future: add correspondences between pair of words (pronouns + verb, article + noun) to distinguish e.g. la verità vs le verità (verdad(es))
 acqua;agua
 aglio;ajo
 aiutare;ayudar
@@ -71,6 +72,9 @@ barca;barco
 basso;bajo
 bello;bello
 bene;bien
+bianca;blanca
+bianche;blancas
+bianchi;blancos
 bianco;blanco
 bocca;boca
 bocche;bocas
@@ -86,6 +90,7 @@ cammini;caminos
 cammino;camino
 campagna;campaña
 campagne;campañas
+campi;campos
 campo;campo
 cane;can
 cani;canes
@@ -112,6 +117,7 @@ castagne;castañas
 causa;causa
 cause;causas
 cavaliere;caballero
+cavalieri;caballeros
 cavallo;caballo
 cena;cena
 centro;centro
@@ -223,6 +229,7 @@ dure;duras
 duri;duros
 duro;duro
 egli;él
+ella;ella
 esempi;ejemplos
 esempio;ejemplo
 esemplare;ejemplar
@@ -317,6 +324,8 @@ incontrata;encontrada
 incontrate;encontradas
 incontrati;encontrados
 incontrato;encontrado
+ingegnere;ingeniero
+ingegneri;ingenieros
 iniziare;iniciar
 iniziata;iniciada
 iniziate;iniciadas
@@ -334,15 +343,16 @@ interessanti;interesantes
 interi;enteros
 intero;entero
 inverno;invierno
+io;yo
 isola;isla
 isole;islas
 laghi;lagos
 lago;lago
 lana;lana
-largo;largo
-larghi;largos
 larga;larga
 larghe;largas
+larghi;largos
+largo;largo
 latte;leche
 latti;leches
 lavare;lavar
@@ -461,6 +471,7 @@ nevi;nieves
 noi;nos
 nome;nombre
 nomi;nombres
+non;no
 normale;normal
 normali;normales
 nostra;nuestra
@@ -736,6 +747,9 @@ servizi;servicios
 servizio;servicio
 sette;siete
 settimana;semana
+sicura;segura
+sicure;seguras
+sicuri;seguros
 sicuro;seguro
 signora;señora
 signore;señor
@@ -747,10 +761,14 @@ sole;sol
 soli;soles
 sopra;sobre
 spagna;españa
+spagnola;española
+spagnole;españolas
 spagnolo;español
 spalla;espalda
 spalle;espaldas
+spazi;espacios
 spazio;espacio
+specchi;espejos
 specchio;espejo
 speciale;especial
 spedire;expedir
@@ -826,6 +844,7 @@ treni;trenes
 treno;tren
 triste;triste
 tristi;tristes
+tu;tú
 tutta;toda
 tutte;todas
 tutti;todos

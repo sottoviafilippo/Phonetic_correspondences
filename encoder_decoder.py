@@ -106,39 +106,39 @@ class MultiHeadAttention(nn.Module):
         self.WV = nn.Linear(d_model, h * dv)
         self.WO = nn.Linear(h * dv, d_model)
         
-        def forward(self, x):
+    def forward(self, x):
 
-            batch_length, sequence_length, _ = x.shape
+        batch_length, sequence_length, _ = x.shape
 
-            # self.WQ(x) has shape (batch_length, sequence_length, h*dk). 
-            # I need to bring it to (batch_length, h, sequence_length, dk): 
-            # after the batch dimension, h sequence_length x dk matrices one after the other
-            # Same K and V (V having dv - a priori not the same as dk)
-            # for this, use view and then transpose the right indices
-            Q = self.WQ(x).view(batch_length, sequence_length, self.h, self.dk).transpose(-3, -2)
-            K = self.WK(x).view(batch_length, sequence_length, self.h, self.dk).transpose(-3, -2)
-            V = self.WV(x).view(batch_length, sequence_length, self.h, self.dv).transpose(-3, -2)
+        # self.WQ(x) has shape (batch_length, sequence_length, h*dk). 
+        # I need to bring it to (batch_length, h, sequence_length, dk): 
+        # after the batch dimension, h sequence_length x dk matrices one after the other
+        # Same K and V (V having dv - a priori not the same as dk)
+        # for this, use view and then transpose the right indices
+        Q = self.WQ(x).view(batch_length, sequence_length, self.h, self.dk).transpose(-3, -2)
+        K = self.WK(x).view(batch_length, sequence_length, self.h, self.dk).transpose(-3, -2)
+        V = self.WV(x).view(batch_length, sequence_length, self.h, self.dv).transpose(-3, -2)
 
-            matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
-            # transpose(-2,-1): swap the last 2 dims (corresponds to K^T in the attention formula)
+        matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
+        # transpose(-2,-1): swap the last 2 dims (corresponds to K^T in the attention formula)
 
-            if self.masking: # cancel contributions from positions yet to be found: basically preserve causality
-                mask = torch.tril(torch.ones(sequence_length, sequence_length)) # is 1 on the diag and below, 0 elsewhere
-                matt = matt.masked_fill(mask == 0, float("-inf"))
+        if self.masking: # cancel contributions from positions yet to be found: basically preserve causality
+            mask = torch.tril(torch.ones(sequence_length, sequence_length)) # is 1 on the diag and below, 0 elsewhere
+            matt = matt.masked_fill(mask == 0, float("-inf"))
 
-            matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim    
+        matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim    
 
-            softmax_mult_V = torch.matmul(matt_softmax, V)
+        softmax_mult_V = torch.matmul(matt_softmax, V)
 
-            # now I have to multiply with V, which has dimensions (sequence_length, dv) (thought of as a matrix)  
-            # so first I concatenate on index 1 (corresponding to the h heads)
-            # to do this rewriting I use view as before, but in the other direction 
-            # (need contiguous before to rewrite the dimensions from scratch afterwards)
+        # now I have to multiply with V, which has dimensions (sequence_length, dv) (thought of as a matrix)  
+        # so first I concatenate on index 1 (corresponding to the h heads)
+        # to do this rewriting I use view as before, but in the other direction 
+        # (need contiguous before to rewrite the dimensions from scratch afterwards)
             
-            softmax_mult_V  = softmax_mult_V.transpose(-3, -2).contiguous().view(batch_length, sequence_length, self.h * sequence_length)
+        softmax_mult_V  = softmax_mult_V.transpose(-3, -2).contiguous().view(batch_length, sequence_length, self.h * self.dv)
 
-            # and now I can project out to d_model dimension with W0 and return  
-            return self.WO(softmax_mult_V)
+        # and now I can project out to d_model dimension with W0 and return  
+        return self.WO(softmax_mult_V)
 
 
 
@@ -160,21 +160,21 @@ class MultiHeadCrossAttention(nn.Module):
         self.WV = nn.Linear(d_model, h * dv)
         self.WO = nn.Linear(h * dv, d_model)
         
-        def forward(self, queries, keys):
-            # no masking for cross-attention
+    def forward(self, queries, keys):
+        # no masking for cross-attention: one obviously looks at all queries every time
 
-            batch_length, target_length, _ = keys.shape
-            _, input_length, _ = keys.shape
+        batch_length, target_length, _ = queries.shape
+        _, input_length, _ = keys.shape
 
-            Q = self.WQ(queries).view(batch_length, input_length, self.h, self.dk).transpose(-3, -2)
-            K = self.WK(keys).view(batch_length, target_length, self.h, self.dk).transpose(-3, -2)
-            V = self.WV(keys).view(batch_length, target_length, self.h, self.dv).transpose(-3, -2)
+        Q = self.WQ(queries).view(batch_length, input_length, self.h, self.dk).transpose(-3, -2)
+        K = self.WK(keys).view(batch_length, target_length, self.h, self.dk).transpose(-3, -2)
+        V = self.WV(keys).view(batch_length, target_length, self.h, self.dv).transpose(-3, -2)
 
-            matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
-            matt_softmax = torch.softmax(matt, -1)    
-            V_times_softmax = torch.matmul(matt_softmax, V).transpose(-3, -2).contiguous().view(batch_length, sequence_length, self.h * sequence_length)
+        matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
+        matt_softmax = torch.softmax(matt, -1)    
+        V_times_softmax = torch.matmul(matt_softmax, V).transpose(-3, -2).contiguous().view(batch_length, target_length, self.h * self.dv)
 
-            return self.WO(V_times_softmax)
+        return self.WO(V_times_softmax)
     
 
 
@@ -203,10 +203,10 @@ class Transformer(nn.Module):
         #finally, linear output projection ...
 
 
-    def train():
+    def fit(self):
         pass
 
-    def train_from_txt():
+    def fit_from_txt(self):
         #words separated by ;
         pass
     

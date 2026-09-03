@@ -16,7 +16,6 @@ import numpy as np
 
 # add sanity checks on dimensions?
 
-# stack layers together: nn.ModuleList
 
 
 def PositionalEncoding(input_data : torch.Tensor, base_den: float = 500) -> torch.Tensor:
@@ -28,14 +27,16 @@ def PositionalEncoding(input_data : torch.Tensor, base_den: float = 500) -> torc
     sequence_length = (input_data.shape)[-2]
     d_model = (input_data.shape)[-1]
 
-    positions = torch.arange(sequence_length).unsqueeze(1).float() # unsqueeze gives dimension (seguence_length, 1)
-
+    # Get the device of the input
+    device = input_data.device
+    positions = torch.arange(sequence_length, device=device).unsqueeze(1).float()
+    
     # compute 1/ff ** (2i / d_model) (called denominators below)
     # use exp log for numerical stability
     # torch.arange(0, d_model, 2) gives [0, 2, 4, ...]
-    denominators = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(base_den) / d_model))  # dimension (d_model/2,) 
+    denominators = torch.exp(torch.arange(0, d_model, 2, device=device).float() * (-np.log(base_den) / d_model)) 
 
-    pos_enc = torch.zeros(sequence_length, d_model)
+    pos_enc = torch.zeros(sequence_length, d_model, device=device)
     pos_enc[:,0::2] = torch.sin(positions * denominators) # even dimensions get sin (i/(...))
     pos_enc[:,1::2] = torch.cos(positions * denominators) # odd dimensions get cos (((i - 1))/(...))
     # note that usually the even/odd dimensions pairs are given as (2i, 2i + 1) with i going up to d_model/2
@@ -60,15 +61,6 @@ class FeedForward(nn.Module):
 
 
 
-class Encoder(nn.Module):
-    pass
-
-
-
-class Decoder(nn.Module):
-    pass
-
-
 class EncoderLayer(nn.Module):
     # embedding and position encoding to be applied before calling the encoder
     def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
@@ -88,6 +80,25 @@ class EncoderLayer(nn.Module):
 
 class DecoderLayer(nn.Module):
     pass
+
+
+class Encoder(nn.Module):
+    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+        # N_times: number of times the encoder is repeated. in the original paper it was equal to 6
+        super().__init__()
+
+        self.encoder = nn.ModuleList([EncoderLayer(d_model, d_hidden, dk, dv, h) for i in range(n_layers)])
+
+    def forward(self,x):
+        for enc in self.encoder:
+            x = enc(x)
+        return x
+
+
+
+class Decoder(nn.Module):
+    pass
+
 
 
 class OneHeadAttention(nn.Module):
@@ -148,7 +159,7 @@ class MultiHeadAttention(nn.Module):
         # transpose(-2,-1): swap the last 2 dims (corresponds to K^T in the attention formula)
 
         if self.masking: # cancel contributions from positions yet to be found: basically preserve causality
-            mask = torch.tril(torch.ones(sequence_length, sequence_length)) # is 1 on the diag and below, 0 elsewhere
+            mask = torch.tril(torch.ones(sequence_length, sequence_length, device=matt.device)) # is 1 on the diag and below, 0 elsewhere
             matt = matt.masked_fill(mask == 0, float("-inf"))
 
         matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim    
@@ -191,9 +202,9 @@ class MultiHeadCrossAttention(nn.Module):
         batch_length, target_length, _ = queries.shape
         _, input_length, _ = keys.shape
 
-        Q = self.WQ(queries).view(batch_length, input_length, self.h, self.dk).transpose(-3, -2)
-        K = self.WK(keys).view(batch_length, target_length, self.h, self.dk).transpose(-3, -2)
-        V = self.WV(keys).view(batch_length, target_length, self.h, self.dv).transpose(-3, -2)
+        Q = self.WQ(queries).view(batch_length, target_length, self.h, self.dk).transpose(-3, -2)
+        K = self.WK(keys).view(batch_length, input_length, self.h, self.dk).transpose(-3, -2)
+        V = self.WV(keys).view(batch_length, input_length, self.h, self.dv).transpose(-3, -2)
 
         matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
         matt_softmax = torch.softmax(matt, -1)    
@@ -205,28 +216,41 @@ class MultiHeadCrossAttention(nn.Module):
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, vocab_size, char_to_idx, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4):
+    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4):
         # for starters start with a light model, just to check its workings
+        # char_to_idx : dictionary from char to int
+
         super().__init__()
 
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # use gpu if possible (mac)
     
         self.d_model = d_model
         self.vocab_size = vocab_size
-        self.char_to_idx = char_to_idx
+        self.char_to_idx = char_to_idx # char to int dictionary
         self.n_heads = n_heads
         self.n_layers = n_layers
         self.feedforward_hidden_dim = feedforward_hidden_dim_to_d_model_ratio * d_model # 4 in 1706.03762 paper 
-    
+
         self.embed = nn.Embedding(vocab_size, d_model, padding_idx=char_to_idx['<pad>']) 
-        #the embedding lives directly in Transformer because Encoder and Decoder share it
+        # the embedding lives directly in Transformer because Encoder and Decoder share it
+
+        self.encoder = Encoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
+        
     
         # now need to add positional (sinusoidal) encoding (fixed, not learned)
         # PositionalEncoding(sequence_length, self.d_model)
         
-        #encoder, decoder ...
-        #finally, linear output projection ...
+        # decoder ...
+        # finally, linear output projection ...
 
+    def forward(self, x, y):
+        # x: source, y: target sequence
+        x_embedded_pos = PositionalEncoding(self.embed(x)*np.sqrt(self.d_model))
+        x_encoded = self.encoder(x_embedded_pos)
+
+        y_embedded_pos = PositionalEncoding(self.embed(y)*np.sqrt(self.d_model))
+        # to do: finish with decoder
+        pass
 
     def fit(self):
 

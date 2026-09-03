@@ -16,6 +16,8 @@ import numpy as np
 
 # add sanity checks on dimensions?
 
+# stack layers together: nn.ModuleList
+
 
 def PositionalEncoding(input_data : torch.Tensor, base_den: float = 500) -> torch.Tensor:
     # in the original paper what I call base_den is 10000 but here I reduce it because I have a much smaller number of tokens (around 20)
@@ -57,12 +59,10 @@ class FeedForward(nn.Module):
         return self.network(x)
 
 
-class MultiHeadAttentionLayer(nn.Module):
-    pass
-
 
 class Encoder(nn.Module):
     pass
+
 
 
 class Decoder(nn.Module):
@@ -70,7 +70,20 @@ class Decoder(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    pass
+    # embedding and position encoding to be applied before calling the encoder
+    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+        super().__init__()
+
+        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = False)
+        self.fforward = FeedForward(d_model, d_hidden)
+        # define two norms with independent parameters:
+        self.norm1 = nn.LayerNorm(d_model) 
+        self.norm2 = nn.LayerNorm(d_model) 
+
+    def forward(self, x):
+        attention_output = self.mhattention(x)
+        x_and_attention = self.norm1(x + attention_output)
+        return self.norm2(x_and_attention + self.fforward(x_and_attention))
 
 
 class DecoderLayer(nn.Module):

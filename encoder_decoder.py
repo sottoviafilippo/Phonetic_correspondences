@@ -82,8 +82,8 @@ class EncoderLayer(nn.Module):
 
     def forward(self, x):
         attention_output = self.mhattention(x)
-        x_and_attention = self.norm1(x + attention_output)
-        return self.norm2(x_and_attention + self.fforward(x_and_attention))
+        x_and_attention = self.norm1(x + attention_output) # add and norm
+        return self.norm2(x_and_attention + self.fforward(x_and_attention)) # add and norm
 
 
 class DecoderLayer(nn.Module):
@@ -102,9 +102,9 @@ class DecoderLayer(nn.Module):
     def forward(self, x, y):
         # x: input (encoded), y: output
         attention_output = self.mhattention(y)
-        y_and_attention = self.norm1(y + attention_output)
+        y_and_attention = self.norm1(y + attention_output) # add and norm
         cross_attention_xy = self.crossattention(y_and_attention, x)
-        y_and_cross_attention = self.norm2(y_and_attention + cross_attention_xy)
+        y_and_cross_attention = self.norm2(y_and_attention + cross_attention_xy) # add and norm
         ff_y_and_cross = self.fforward(y_and_cross_attention)
 
         return self.norm3(ff_y_and_cross + y_and_cross_attention)

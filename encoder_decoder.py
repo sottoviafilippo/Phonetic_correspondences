@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from typing import Callable
+#import torch.optim as optim
+#from typing import Callable
 import numpy as np
 
 
@@ -12,9 +12,17 @@ import numpy as np
 
 # no unicode or normalize calls on the strings to preserve the accents
 
-# TO DO: define positional encoding as a module with a buffer for better efficiency
+# TO DO LIST
 
-# add sanity checks on dimensions?
+# define positional encoding as a module with a buffer for better efficiency
+
+# need padding mask in main transformer class
+
+# define mask outside for better efficiency
+
+# modern papers use pre-layer norm (more stable)
+
+# UNDERSTAND TRAINING VS GENERATOR : NO LOOP VS LOOP
 
 
 
@@ -68,7 +76,7 @@ class EncoderLayer(nn.Module):
 
         self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = False)
         self.fforward = FeedForward(d_model, d_hidden)
-        # define two norms with independent parameters:
+        # define two norms with independent parameters (gamma and beta, see https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html):
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model) 
 
@@ -79,25 +87,52 @@ class EncoderLayer(nn.Module):
 
 
 class DecoderLayer(nn.Module):
-    pass
+    # embedding and position encoding to be applied before calling the encoder
+    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+        super().__init__()
+    
+        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = True) # need masking here
+        self.crossattention = MultiHeadCrossAttention(d_model, dk, dv, h)
+        self.fforward = FeedForward(d_model, d_hidden)
+        # define three norms with independent parameters:
+        self.norm1 = nn.LayerNorm(d_model) 
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model) 
+    
+    def forward(self, x, y):
+        # x: input (encoded), y: output
+        attention_output = self.mhattention(y)
+        y_and_attention = self.norm1(y + attention_output)
+        cross_attention_xy = self.crossattention(y_and_attention, x)
+        y_and_cross_attention = self.norm2(y_and_attention + cross_attention_xy)
+        ff_y_and_cross = self.fforward(y_and_cross_attention)
+
+        return self.norm3(ff_y_and_cross + y_and_cross_attention)
 
 
 class Encoder(nn.Module):
     def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
-        # N_times: number of times the encoder is repeated. in the original paper it was equal to 6
+        # n_layers: number of times the encoder is repeated. in the original paper it was equal to 6
         super().__init__()
 
         self.encoder = nn.ModuleList([EncoderLayer(d_model, d_hidden, dk, dv, h) for i in range(n_layers)])
 
-    def forward(self,x):
+    def forward(self, x):
         for enc in self.encoder:
             x = enc(x)
         return x
 
 
-
 class Decoder(nn.Module):
-    pass
+    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+        super().__init__()
+
+        self.decoder = nn.ModuleList([DecoderLayer(d_model, d_hidden, dk, dv, h) for i in range(n_layers)])
+
+    def forward(self, x, y):
+        for dec in self.decoder:
+            y = dec(x, y)
+        return y
 
 
 
@@ -159,6 +194,7 @@ class MultiHeadAttention(nn.Module):
         # transpose(-2,-1): swap the last 2 dims (corresponds to K^T in the attention formula)
 
         if self.masking: # cancel contributions from positions yet to be found: basically preserve causality
+            # TO DO: define the mask outside for better efficiency
             mask = torch.tril(torch.ones(sequence_length, sequence_length, device=matt.device)) # is 1 on the diag and below, 0 elsewhere
             matt = matt.masked_fill(mask == 0, float("-inf"))
 
@@ -222,7 +258,11 @@ class Transformer(nn.Module):
 
         super().__init__()
 
-        self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # use gpu if possible (mac)
+        self.device = torch.device(
+            "mps" if torch.backends.mps.is_available()
+            else "cuda" if torch.cuda.is_available()
+            else "cpu"
+        ) # use gpu if possible (mac)
     
         self.d_model = d_model
         self.vocab_size = vocab_size
@@ -235,13 +275,9 @@ class Transformer(nn.Module):
         # the embedding lives directly in Transformer because Encoder and Decoder share it
 
         self.encoder = Encoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
-        
-    
-        # now need to add positional (sinusoidal) encoding (fixed, not learned)
-        # PositionalEncoding(sequence_length, self.d_model)
-        
-        # decoder ...
-        # finally, linear output projection ...
+        self.decoder = Decoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
+
+        self.to(self.device)
 
     def forward(self, x, y):
         # x: source, y: target sequence
@@ -249,8 +285,10 @@ class Transformer(nn.Module):
         x_encoded = self.encoder(x_embedded_pos)
 
         y_embedded_pos = PositionalEncoding(self.embed(y)*np.sqrt(self.d_model))
-        # to do: finish with decoder
-        pass
+        y_decoded = self.decoder(x_encoded, y_embedded_pos)
+        # to do: finish with decoder, will need padding mask
+          
+        # finally, linear output projection ...
 
     def fit(self):
 
@@ -260,4 +298,5 @@ class Transformer(nn.Module):
     def fit_from_txt(self):
         #words separated by ;
         pass
+
     

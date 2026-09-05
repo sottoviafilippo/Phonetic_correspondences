@@ -1,2 +1,0 @@
-# Small encoder-decoder transformer
-

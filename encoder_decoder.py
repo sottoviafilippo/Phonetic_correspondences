@@ -14,15 +14,11 @@ import numpy as np
 
 # TO DO LIST
 
-# define positional encoding as a module with a buffer for better efficiency
-
 # need padding mask in main transformer class
 
 # define mask outside for better efficiency
 
 # modern papers use pre-layer norm (more stable)
-
-# UNDERSTAND TRAINING VS GENERATOR : NO LOOP VS LOOP
 
 
 
@@ -52,6 +48,38 @@ def PositionalEncoding(input_data : torch.Tensor, base_den: float = 500) -> torc
 
     return input_data + pos_enc # automatically broadcasts over the batch dimension
 
+
+class PositionalEncodingModule(nn.Module):
+    # defined as module with a buffer for better efficiency
+    # precomputes the encoding once up to max_len and slices it per forward call,
+    # instead of recomputing sin/cos every time (like the PositionalEncoding function)
+
+    def __init__(self, d_model: int, max_len: int = 20, base_den: float = 500):
+        # in the original paper what I call base_den is 10000 but here I reduce it because I have a much smaller number of tokens (around 20)
+        super().__init__()
+
+        positions = torch.arange(max_len).unsqueeze(1).float()
+
+        # compute 1/ff ** (2i / d_model) (denominators), using exp/log for numerical stability
+        # torch.arange(0, d_model, 2) gives [0, 2, 4, ...]
+        denominators = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(base_den) / d_model))
+
+        pos_enc = torch.zeros(max_len, d_model)
+        pos_enc[:, 0::2] = torch.sin(positions * denominators)  # even dims get sin
+        pos_enc[:, 1::2] = torch.cos(positions * denominators)  # odd dims get cos
+
+        # assert sequence_length <= self.pos_enc.shape[1], "sequence longer than max_len"
+
+        pos_enc = pos_enc.unsqueeze(0)  # shape (1, max_len, d_model), broadcasts over batch
+
+        # register as buffer: moves with .to(device)/.cuda(), saved in state_dict by default,
+        # but not treated as a learnable parameter (no gradient, no optimizer update)
+        self.register_buffer("pos_enc", pos_enc)
+
+    def forward(self, input_data: torch.Tensor) -> torch.Tensor:
+        # format of input_data: (batch, sequence_length, d_model)
+        sequence_length = input_data.shape[-2]
+        return input_data + self.pos_enc[:, :sequence_length, :]
 
 
 class FeedForward(nn.Module):
@@ -272,28 +300,34 @@ class Transformer(nn.Module):
         self.feedforward_hidden_dim = feedforward_hidden_dim_to_d_model_ratio * d_model # 4 in 1706.03762 paper 
 
         self.embed = nn.Embedding(vocab_size, d_model, padding_idx=char_to_idx['<pad>']) 
+        self.pos_encoding = PositionalEncodingModule(d_model, max_len=max_len)
         # the embedding lives directly in Transformer because Encoder and Decoder share it
 
         self.encoder = Encoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
         self.decoder = Decoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
 
+        self.exit_linear_projection = nn.Linear(d_model, vocab_size) # in the original paper they use weight tying (basically transpose embed)
+
         self.to(self.device)
+
 
     def forward(self, x, y):
         # x: source, y: target sequence
-        x_embedded_pos = PositionalEncoding(self.embed(x)*np.sqrt(self.d_model))
+        x_embedded_pos = self.pos_encoding(self.embed(x)*np.sqrt(self.d_model))
         x_encoded = self.encoder(x_embedded_pos)
 
-        y_embedded_pos = PositionalEncoding(self.embed(y)*np.sqrt(self.d_model))
+        y_embedded_pos = self.pos_encoding(self.embed(y)*np.sqrt(self.d_model))
         y_decoded = self.decoder(x_encoded, y_embedded_pos)
-        # to do: finish with decoder, will need padding mask
+        # will need padding mask
           
-        # finally, linear output projection ...
+        return self.exit_linear_projection(y)
+
 
     def fit(self):
 
         # use cross entropy for the loss
         pass
+
 
     def fit_from_txt(self):
         #words separated by ;

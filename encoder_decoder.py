@@ -79,6 +79,13 @@ class PositionalEncodingModule(nn.Module):
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         # format of input_data: (batch, sequence_length, d_model)
         sequence_length = input_data.shape[-2]
+
+        # check sequence length is not > max_len
+        assert sequence_length <= self.pos_enc.shape[1], (
+                f"sequence_length ({sequence_length}) exceeds max_len "
+                f"({self.pos_enc.shape[1]}) the positional encoding was built with"
+            )
+        
         return input_data + self.pos_enc[:, :sequence_length, :]
 
 
@@ -313,6 +320,7 @@ class Transformer(nn.Module):
 
     def forward(self, x, y):
         # x: source, y: target sequence
+        
         x_embedded_pos = self.pos_encoding(self.embed(x)*np.sqrt(self.d_model))
         x_encoded = self.encoder(x_embedded_pos)
 
@@ -320,8 +328,41 @@ class Transformer(nn.Module):
         y_decoded = self.decoder(x_encoded, y_embedded_pos)
         # will need padding mask
           
-        return self.exit_linear_projection(y)
+        return self.exit_linear_projection(y_decoded)
 
+
+    def generate_sequence(self, x, max_len = 20):
+        """generates a sequence from an input one"""
+
+        # first check that the input sequence length is not > max_len
+        assert max_len <= self.pos_encoding.pos_enc.shape[1], (
+            f"generate_sequence max_len ({max_len}) exceeds the model's positional "
+            f"encoding max_len ({self.pos_encoding.pos_enc.shape[1]}); "
+            f"rebuild the model with a larger max_len if longer sequences are needed"
+        )
+
+        self.eval()
+
+        with torch.no_grad():
+            x_encoded = self.encoder(self.pos_encoding(self.embed(x) * np.sqrt(self.d_model))) # encode the input one for all
+            y = torch.tensor([[self.char_to_idx['<sos>']]], device=self.device) # initialize y with <sos> token
+
+            for k in range(max_len):
+                decoded_output = self.decoder(x_encoded, self.pos_encoding(self.embed(y) * np.sqrt(self.d_model)))
+                output_logits = self.exit_linear_projection(decoded_output)
+                output_probs = torch.softmax(output_logits, dim=-1)
+
+                # Get the prediction for the last time step. greedy: argmax: would not need to go through softmax. 
+                # to be changed later if I want to use softmax to sample randomly
+                next_token = torch.argmax(output_probs[:,-1,:], dim=-1).unsqueeze(1)
+            
+                # Append the predicted token to y
+                y = torch.cat([y, next_token], dim=1)
+
+                if next_token.item() == self.char_to_idx['<eos>']:
+                    break
+
+        return y # it will by construction return a series of ints, will have to be translated to chars using the dictionary 
 
     def fit(self):
 

@@ -14,11 +14,12 @@ import numpy as np
 
 # TO DO LIST
 
-# need padding mask in main transformer class
-
 # define mask outside for better efficiency
 
 # modern papers use pre-layer norm (more stable)
+
+# update padding mask to that I does not mask pads WITHIN the sentence (e.g. to distinguish "la verdad", "las verdades" giving "la verità", "le verità" in Italian)
+# (although maybe positional encoding, done before masking, might still contribute to distinguishing the two cases)
 
 
 
@@ -48,6 +49,11 @@ def PositionalEncoding(input_data : torch.Tensor, base_den: float = 500) -> torc
 
     return input_data + pos_enc # automatically broadcasts over the batch dimension
 
+
+def make_padding_mask(seq, pad_idx):
+    # seq: (batch, seq_len) of token ids
+    # returns (batch, 1, 1, seq_len) — broadcasts over heads and query positions
+    return (seq != pad_idx).unsqueeze(1).unsqueeze(2)
 
 class PositionalEncodingModule(nn.Module):
     # defined as module with a buffer for better efficiency
@@ -115,8 +121,8 @@ class EncoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model) 
 
-    def forward(self, x):
-        attention_output = self.mhattention(x)
+    def forward(self, x, key_padding_mask = None):
+        attention_output = self.mhattention(x, key_padding_mask = key_padding_mask)
         x_and_attention = self.norm1(x + attention_output) # add and norm
         return self.norm2(x_and_attention + self.fforward(x_and_attention)) # add and norm
 
@@ -134,11 +140,11 @@ class DecoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(d_model)
         self.norm3 = nn.LayerNorm(d_model) 
     
-    def forward(self, x, y):
+    def forward(self, x, y, x_padding_mask = None, y_padding_mask = None):
         # x: input (encoded), y: output
-        attention_output = self.mhattention(y)
+        attention_output = self.mhattention(y, key_padding_mask = y_padding_mask)
         y_and_attention = self.norm1(y + attention_output) # add and norm
-        cross_attention_xy = self.crossattention(y_and_attention, x)
+        cross_attention_xy = self.crossattention(y_and_attention, x, key_padding_mask = x_padding_mask)
         y_and_cross_attention = self.norm2(y_and_attention + cross_attention_xy) # add and norm
         ff_y_and_cross = self.fforward(y_and_cross_attention)
 
@@ -152,9 +158,9 @@ class Encoder(nn.Module):
 
         self.encoder = nn.ModuleList([EncoderLayer(d_model, d_hidden, dk, dv, h) for i in range(n_layers)])
 
-    def forward(self, x):
+    def forward(self, x, key_padding_mask = None):
         for enc in self.encoder:
-            x = enc(x)
+            x = enc(x, key_padding_mask = key_padding_mask)
         return x
 
 
@@ -164,9 +170,9 @@ class Decoder(nn.Module):
 
         self.decoder = nn.ModuleList([DecoderLayer(d_model, d_hidden, dk, dv, h) for i in range(n_layers)])
 
-    def forward(self, x, y):
+    def forward(self, x, y, x_padding_mask = None, y_padding_mask = None):
         for dec in self.decoder:
-            y = dec(x, y)
+            y = dec(x, y, x_padding_mask = x_padding_mask, y_padding_mask = y_padding_mask)
         return y
 
 
@@ -212,7 +218,7 @@ class MultiHeadAttention(nn.Module):
         self.WV = nn.Linear(d_model, h * dv)
         self.WO = nn.Linear(h * dv, d_model)
         
-    def forward(self, x):
+    def forward(self, x, key_padding_mask = None):
 
         batch_length, sequence_length, _ = x.shape
 
@@ -230,8 +236,12 @@ class MultiHeadAttention(nn.Module):
 
         if self.masking: # cancel contributions from positions yet to be found: basically preserve causality
             # TO DO: define the mask outside for better efficiency
-            mask = torch.tril(torch.ones(sequence_length, sequence_length, device=matt.device)) # is 1 on the diag and below, 0 elsewhere
-            matt = matt.masked_fill(mask == 0, float("-inf"))
+            causal = torch.tril(torch.ones(sequence_length, sequence_length, device=matt.device)).bool()
+            matt = matt.masked_fill(~causal, float("-inf"))
+
+        if key_padding_mask is not None: # pads shall not contribute
+            # potential issue: if I completely mask a row I'll get nans. TO DO: write warning/assert 
+            matt = matt.masked_fill(~key_padding_mask, float("-inf"))
 
         matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim    
 
@@ -267,7 +277,7 @@ class MultiHeadCrossAttention(nn.Module):
         self.WV = nn.Linear(d_model, h * dv)
         self.WO = nn.Linear(h * dv, d_model)
         
-    def forward(self, queries, keys):
+    def forward(self, queries, keys, key_padding_mask = None):
         # no masking for cross-attention: one obviously looks at all queries every time
 
         batch_length, target_length, _ = queries.shape
@@ -278,6 +288,10 @@ class MultiHeadCrossAttention(nn.Module):
         V = self.WV(keys).view(batch_length, input_length, self.h, self.dv).transpose(-3, -2)
 
         matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
+
+        if key_padding_mask is not None:
+            matt = matt.masked_fill(~key_padding_mask, float("-inf"))
+
         matt_softmax = torch.softmax(matt, -1)    
         V_times_softmax = torch.matmul(matt_softmax, V).transpose(-3, -2).contiguous().view(batch_length, target_length, self.h * self.dv)
 
@@ -292,6 +306,7 @@ class Transformer(nn.Module):
         # char_to_idx : dictionary from char to int
 
         super().__init__()
+        assert d_model % 2 == 0, "need even d_model"
 
         self.device = torch.device(
             "mps" if torch.backends.mps.is_available()
@@ -306,7 +321,10 @@ class Transformer(nn.Module):
         self.n_layers = n_layers
         self.feedforward_hidden_dim = feedforward_hidden_dim_to_d_model_ratio * d_model # 4 in 1706.03762 paper 
 
+        self.pad_idx = self.char_to_idx['<pad>']
+
         self.embed = nn.Embedding(vocab_size, d_model, padding_idx=char_to_idx['<pad>']) 
+        # padding_idx: pad row initialized to 0 and never gets gradient updates
         self.pos_encoding = PositionalEncodingModule(d_model, max_len=max_len)
         # the embedding lives directly in Transformer because Encoder and Decoder share it
 
@@ -320,19 +338,25 @@ class Transformer(nn.Module):
 
     def forward(self, x, y):
         # x: source, y: target sequence
+
+        padding_mask_x = make_padding_mask(x, self.pad_idx)
+        padding_mask_y = make_padding_mask(y, self.pad_idx)
         
         x_embedded_pos = self.pos_encoding(self.embed(x)*np.sqrt(self.d_model))
-        x_encoded = self.encoder(x_embedded_pos)
+        x_encoded = self.encoder(x_embedded_pos, key_padding_mask = padding_mask_x)
 
         y_embedded_pos = self.pos_encoding(self.embed(y)*np.sqrt(self.d_model))
-        y_decoded = self.decoder(x_encoded, y_embedded_pos)
+        y_decoded = self.decoder(x_encoded, y_embedded_pos, padding_mask_x = padding_mask_x, padding_mask_y = padding_mask_y)
         # will need padding mask
           
         return self.exit_linear_projection(y_decoded)
 
 
     def generate_sequence(self, x, max_len = 20):
-        """generates a sequence from an input one"""
+        """generates a sequence from an input sequence
+        for now limited to producing a batch of size 1
+        """
+
 
         # first check that the input sequence length is not > max_len
         assert max_len <= self.pos_encoding.pos_enc.shape[1], (
@@ -343,12 +367,15 @@ class Transformer(nn.Module):
 
         self.eval()
 
+        x_padding_mask = make_padding_mask(x, self.pad_idx)
+
         with torch.no_grad():
-            x_encoded = self.encoder(self.pos_encoding(self.embed(x) * np.sqrt(self.d_model))) # encode the input one for all
+            x_encoded = self.encoder(self.pos_encoding(self.embed(x) * np.sqrt(self.d_model)), key_padding_mask = x_padding_mask) # encode the input one for all
             y = torch.tensor([[self.char_to_idx['<sos>']]], device=self.device) # initialize y with <sos> token
 
             for k in range(max_len):
-                decoded_output = self.decoder(x_encoded, self.pos_encoding(self.embed(y) * np.sqrt(self.d_model)))
+                decoded_output = self.decoder(x_encoded, self.pos_encoding(self.embed(y) * np.sqrt(self.d_model)), x_padding_mask = x_padding_mask)
+                # dont need y padding mask here because filling pads not there in y (which is being built)
                 output_logits = self.exit_linear_projection(decoded_output)
                 output_probs = torch.softmax(output_logits, dim=-1)
 
@@ -374,4 +401,4 @@ class Transformer(nn.Module):
         #words separated by ;
         pass
 
-    
+# UNDERSTAND IF WHEN HOW I NEED PADDING MASK    

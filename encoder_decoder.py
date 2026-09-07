@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-#import torch.optim as optim
+import torch.optim as optim
 #from typing import Callable
 import numpy as np
 
@@ -52,6 +52,39 @@ def make_padding_mask(seq, pad_idx):
     # seq: (batch, seq_len) of token ids
     # returns (batch, 1, 1, seq_len) — broadcasts over heads and query positions
     return (seq != pad_idx).unsqueeze(1).unsqueeze(2)
+
+
+def load_txt_file(filepath):
+    """read txt file, in format x;y
+    """
+    sources, targets = [], []
+
+    with open(filepath, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            src, tgt = line.split(";")
+            sources.append(src.strip())
+            targets.append(tgt.strip())
+
+    return sources, targets
+
+
+def encode_batch(words, char_to_idx):
+    # needed for training from txt
+
+    sequences = []
+    for w in words:
+        ids = [char_to_idx[c] for c in w]
+        sequences.append(ids)
+    
+    max_len = max(len(s) for s in sequences)
+    pad_idx = char_to_idx['<pad>']
+    padded = [s + [pad_idx] * (max_len - len(s)) for s in sequences]
+
+    return torch.tensor(padded, dtype=torch.long)
+
 
 class PositionalEncodingModule(nn.Module):
     # defined as module with a buffer for better efficiency
@@ -295,7 +328,7 @@ class MultiHeadCrossAttention(nn.Module):
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4):
+    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01):
         # for starters start with a light model, just to check its workings
         # char_to_idx : dictionary from char to int
 
@@ -327,7 +360,31 @@ class Transformer(nn.Module):
 
         self.exit_linear_projection = nn.Linear(d_model, vocab_size) # in the original paper they use weight tying (basically transpose embed)
 
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.5)
+        self.criterion = nn.CrossEntropyLoss(ignore_index=self.pad_idx) # ignore spaces, works on pads in the target
+        
         self.to(self.device)
+
+
+    def make_y_for_training(self, y):
+        """Builds the y input for teacher forcing: adds '<sos>' at the beginning of each string.
+        """
+        eos_idx = self.char_to_idx['<eos>']
+        batch_size = y.shape[0]
+        eos_col = torch.full((batch_size, 1), eos_idx, dtype=y.dtype, device=y.device) # creates a tensor of shape [batch_size, 1] filled entirely with eos_idx
+        return torch.cat([y[:, 1:], eos_col], dim=1) # ignores the first character (sos) and stitches the eos_col tensor that was just created
+
+
+    def make_target(self, y):
+        """Builds the target for teacher forcing: drops the leading <sos>
+        and appends an <eos>, so it lines up position-for-position with
+        the decoder output (which has the same length as the input y).
+        """
+        eos_idx = self.char_to_idx['<eos>']
+        batch_size = y.shape[0]
+        eos_col = torch.full((batch_size, 1), eos_idx, dtype=y.dtype, device=y.device) # creates a tensor of shape [batch_size, 1] filled entirely with eos_idx
+        return torch.cat([y[:, 1:], eos_col], dim=1) # ignores the first character (sos) and stitches the eos_col tensor that was just created
 
 
     def forward(self, x, y):
@@ -349,8 +406,8 @@ class Transformer(nn.Module):
         x_encoded = self.encoder(x_embedded_pos, key_padding_mask = padding_mask_x)
 
         y_embedded_pos = self.pos_encoding(self.embed(y)*np.sqrt(self.d_model))
+        # use padding masks for x and y
         y_decoded = self.decoder(x_encoded, y_embedded_pos, x_padding_mask=padding_mask_x, y_padding_mask=padding_mask_y)
-        # will need padding mask
           
         return self.exit_linear_projection(y_decoded)
 
@@ -396,14 +453,40 @@ class Transformer(nn.Module):
 
         return y # it will by construction return a series of ints, will have to be translated to chars using the dictionary 
 
-    def fit(self):
-
+    def fit(self, x, y, n_epochs: int = 1000):
         # use cross entropy for the loss
-        pass
+
+        self.epochs = np.arange(n_epochs)
+        self.losses = []
+
+        x = x.to(self.device)
+        y = y.to(self.device)
+        y = self.make_y_for_training(y)
+        target = self.make_target(y)
 
 
-    def fit_from_txt(self):
-        #words separated by ;
-        pass
+        for epoch in range(n_epochs):
+            self.optimizer.zero_grad()
+
+            predictions_batch = self(x, y)
+            loss_batch = self.criterion(predictions_batch.transpose(1, 2), target) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
+
+            loss_batch.backward()
+            self.optimizer.step()
+            self.scheduler.step()
+
+            self.losses.append(loss_batch.item())
+            if epoch%100 == 0:
+                print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item())
+
+
+    def fit_from_txt(self, txt_file, n_epochs:int = 1000):
+        #words separated by ; in file txt_file
+
+        sources, targets = load_txt_file(txt_file)
+        x = encode_batch(sources, self.char_to_idx)
+        y = encode_batch(targets, self.char_to_idx)
+
+        self.fit(x, y, n_epochs = n_epochs)
 
  

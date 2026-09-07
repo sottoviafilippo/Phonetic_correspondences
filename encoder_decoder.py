@@ -344,7 +344,7 @@ class MultiHeadCrossAttention(nn.Module):
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01):
+    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01, scheduler_step_size = 100):
         # for starters start with a light model, just to check its workings
         # char_to_idx : dictionary from char to int
 
@@ -377,7 +377,7 @@ class Transformer(nn.Module):
         self.exit_linear_projection = nn.Linear(d_model, vocab_size) # in the original paper they use weight tying (basically transpose embed)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.5)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_step_size, gamma=0.5)
         self.criterion = nn.CrossEntropyLoss(ignore_index=self.pad_idx) # ignore spaces, works on pads in the target
         
         self.to(self.device)
@@ -503,4 +503,16 @@ class Transformer(nn.Module):
 
         self.fit(x, y, target, x_eval, y_eval, y_target_eval, n_epochs = n_epochs)
 
+
+    def count_parameters_by_module(model: nn.Module, trainable_only: bool = True) -> dict:
+        """counts the number of parameters, in total and for every submodule"""
+        counts = {}
+        for name, module in model.named_children():
+            if trainable_only:
+                n = sum(p.numel() for p in module.parameters() if p.requires_grad)
+            else:
+                n = sum(p.numel() for p in module.parameters())
+            counts[name] = n
+        counts["TOTAL"] = sum(counts.values())
+        return counts
  

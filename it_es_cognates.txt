@@ -771,6 +771,7 @@ spazio;espacio
 specchi;espejos
 specchio;espejo
 speciale;especial
+speciali;especiales
 spedire;expedir
 sperare;esperar
 spesso;espeso

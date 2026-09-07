@@ -71,16 +71,24 @@ def load_txt_file(filepath):
     return sources, targets
 
 
-def encode_batch(words, char_to_idx):
+def encode_batch(words, char_to_idx, add_sos=False, add_eos=False):
     # needed for training from txt
+    sos_idx = char_to_idx['<sos>']
+    eos_idx = char_to_idx['<eos>']
+    pad_idx = char_to_idx['<pad>']
 
     sequences = []
     for w in words:
         ids = [char_to_idx[c] for c in w]
+        if add_sos:
+            ids = [sos_idx] + ids
+        if add_eos:
+            ids = ids + [eos_idx]
         sequences.append(ids)
-    
+
+    # it is crucial to put <eos> BEFORE padding
+
     max_len = max(len(s) for s in sequences)
-    pad_idx = char_to_idx['<pad>']
     padded = [s + [pad_idx] * (max_len - len(s)) for s in sequences]
 
     return torch.tensor(padded, dtype=torch.long)
@@ -367,26 +375,6 @@ class Transformer(nn.Module):
         self.to(self.device)
 
 
-    def make_y_for_training(self, y):
-        """Builds the y input for teacher forcing: adds '<sos>' at the beginning of each string.
-        """
-        eos_idx = self.char_to_idx['<eos>']
-        batch_size = y.shape[0]
-        eos_col = torch.full((batch_size, 1), eos_idx, dtype=y.dtype, device=y.device) # creates a tensor of shape [batch_size, 1] filled entirely with eos_idx
-        return torch.cat([y[:, 1:], eos_col], dim=1) # ignores the first character (sos) and stitches the eos_col tensor that was just created
-
-
-    def make_target(self, y):
-        """Builds the target for teacher forcing: drops the leading <sos>
-        and appends an <eos>, so it lines up position-for-position with
-        the decoder output (which has the same length as the input y).
-        """
-        eos_idx = self.char_to_idx['<eos>']
-        batch_size = y.shape[0]
-        eos_col = torch.full((batch_size, 1), eos_idx, dtype=y.dtype, device=y.device) # creates a tensor of shape [batch_size, 1] filled entirely with eos_idx
-        return torch.cat([y[:, 1:], eos_col], dim=1) # ignores the first character (sos) and stitches the eos_col tensor that was just created
-
-
     def forward(self, x, y):
         # x: source, y: target sequence
 
@@ -453,7 +441,10 @@ class Transformer(nn.Module):
 
         return y # it will by construction return a series of ints, will have to be translated to chars using the dictionary 
 
-    def fit(self, x, y, n_epochs: int = 1000):
+    def fit(self, x, y, y_target, n_epochs: int = 1000):
+        # x: input
+        # y: decoder input
+        # y_target: expected outcomes
         # use cross entropy for the loss
 
         self.epochs = np.arange(n_epochs)
@@ -461,15 +452,13 @@ class Transformer(nn.Module):
 
         x = x.to(self.device)
         y = y.to(self.device)
-        y = self.make_y_for_training(y)
-        target = self.make_target(y)
-
+        y_target = y_target.to(self.device)
 
         for epoch in range(n_epochs):
             self.optimizer.zero_grad()
 
             predictions_batch = self(x, y)
-            loss_batch = self.criterion(predictions_batch.transpose(1, 2), target) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
+            loss_batch = self.criterion(predictions_batch.transpose(1, 2), y_target) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
 
             loss_batch.backward()
             self.optimizer.step()
@@ -483,10 +472,12 @@ class Transformer(nn.Module):
     def fit_from_txt(self, txt_file, n_epochs:int = 1000):
         #words separated by ; in file txt_file
 
+        # first need to add eos and sos signs in the right positions (on y)
         sources, targets = load_txt_file(txt_file)
-        x = encode_batch(sources, self.char_to_idx)
-        y = encode_batch(targets, self.char_to_idx)
+        x = encode_batch(sources, self.char_to_idx) # add_eos and add_sos set to False by default
+        y = encode_batch(targets, self.char_to_idx, add_eos = False, add_sos = True)
+        target = encode_batch(targets, self.char_to_idx, add_eos = True, add_sos = False)
 
-        self.fit(x, y, n_epochs = n_epochs)
+        self.fit(x, y, target, n_epochs = n_epochs)
 
  

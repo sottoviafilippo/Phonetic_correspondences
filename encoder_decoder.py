@@ -54,9 +54,10 @@ def make_padding_mask(seq, pad_idx):
     return (seq != pad_idx).unsqueeze(1).unsqueeze(2)
 
 
-def load_txt_file(filepath):
-    """read txt file, in format x;y
-    """
+import random
+
+def load_txt_file(filepath, shuffle=True):
+    """Read txt file in format x;y, with an option to shuffle the rows."""
     sources, targets = [], []
 
     with open(filepath, encoding="utf-8") as f:
@@ -67,6 +68,13 @@ def load_txt_file(filepath):
             src, tgt = line.split(";")
             sources.append(src.strip())
             targets.append(tgt.strip())
+
+    # Shuffle both lists together to keep source-target pairs aligned
+    if shuffle:
+        combined = list(zip(sources, targets))
+        random.shuffle(combined)
+        sources, targets = zip(*combined)
+        sources, targets = list(sources), list(targets)
 
     return sources, targets
 
@@ -441,7 +449,7 @@ class Transformer(nn.Module):
 
         return y # it will by construction return a series of ints, will have to be translated to chars using the dictionary 
 
-    def fit(self, x, y, y_target, n_epochs: int = 1000):
+    def fit(self, x, y, y_target, x_eval, y_eval, y_target_eval, n_epochs: int = 1000):
         # x: input
         # y: decoder input
         # y_target: expected outcomes
@@ -449,24 +457,32 @@ class Transformer(nn.Module):
 
         self.epochs = np.arange(n_epochs)
         self.losses = []
+        self.losses_eval = []
 
         x = x.to(self.device)
         y = y.to(self.device)
         y_target = y_target.to(self.device)
+        x_eval = x_eval.to(self.device)
+        y_eval = y_eval.to(self.device)
+        y_target_eval = y_target_eval.to(self.device)
 
         for epoch in range(n_epochs):
             self.optimizer.zero_grad()
 
             predictions_batch = self(x, y)
             loss_batch = self.criterion(predictions_batch.transpose(1, 2), y_target) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
+            predictions_batch_eval = self(x_eval, y_eval)
+            loss_batch_eval = self.criterion(predictions_batch_eval.transpose(1, 2), y_target_eval) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
 
             loss_batch.backward()
             self.optimizer.step()
             self.scheduler.step()
 
             self.losses.append(loss_batch.item())
+            self.losses_eval.append(loss_batch_eval.item())
+
             if epoch%100 == 0:
-                print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item())
+                print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item(), " loss_eval = ", loss_batch_eval.item())
 
 
     def fit_from_txt(self, txt_file, n_epochs:int = 1000):
@@ -474,10 +490,17 @@ class Transformer(nn.Module):
 
         # first need to add eos and sos signs in the right positions (on y)
         sources, targets = load_txt_file(txt_file)
-        x = encode_batch(sources, self.char_to_idx) # add_eos and add_sos set to False by default
-        y = encode_batch(targets, self.char_to_idx, add_eos = False, add_sos = True)
-        target = encode_batch(targets, self.char_to_idx, add_eos = True, add_sos = False)
 
-        self.fit(x, y, target, n_epochs = n_epochs)
+        N_train = int(len(sources) * 0.8)
+
+        x = encode_batch(sources[:N_train], self.char_to_idx) # add_eos and add_sos set to False by default
+        y = encode_batch(targets[:N_train], self.char_to_idx, add_eos = False, add_sos = True)
+        target = encode_batch(targets[:N_train], self.char_to_idx, add_eos = True, add_sos = False)
+
+        x_eval = encode_batch(sources[N_train:], self.char_to_idx) # add_eos and add_sos set to False by default
+        y_eval = encode_batch(targets[N_train:], self.char_to_idx, add_eos = False, add_sos = True)
+        y_target_eval = encode_batch(targets[N_train:], self.char_to_idx, add_eos = True, add_sos = False)
+
+        self.fit(x, y, target, x_eval, y_eval, y_target_eval, n_epochs = n_epochs)
 
  

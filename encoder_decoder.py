@@ -5,12 +5,10 @@ import torch.nn as nn
 import numpy as np
 
 
-
 # roughly trying to follow the structure of the "Attention is all you need" paper https://arxiv.org/abs/1706.03762
-
 # share embedding for both sides - for now both languages share latin alphabet. to be changed later for more general cases
-
 # no unicode or normalize calls on the strings to preserve the accents
+
 
 # TO DO LIST
 
@@ -109,7 +107,6 @@ class FeedForward(nn.Module):
         return self.network(x)
 
 
-
 class EncoderLayer(nn.Module):
     # embedding and position encoding to be applied before calling the encoder
     def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
@@ -174,7 +171,6 @@ class Decoder(nn.Module):
         for dec in self.decoder:
             y = dec(x, y, x_padding_mask = x_padding_mask, y_padding_mask = y_padding_mask)
         return y
-
 
 
 class OneHeadAttention(nn.Module):
@@ -258,7 +254,6 @@ class MultiHeadAttention(nn.Module):
         return self.WO(softmax_mult_V)
 
 
-
 class MultiHeadCrossAttention(nn.Module):
     # to be used in the Decoder
     # for comments see the MultiHeadAttention class
@@ -297,7 +292,6 @@ class MultiHeadCrossAttention(nn.Module):
 
         return self.WO(V_times_softmax)
     
-
 
 class Transformer(nn.Module):
 
@@ -339,6 +333,15 @@ class Transformer(nn.Module):
     def forward(self, x, y):
         # x: source, y: target sequence
 
+        # always want batch dimension 1, even for simple tests:
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+        if y.dim() == 1:
+            y = y.unsqueeze(0)
+
+        x = x.to(self.device)
+        y = y.to(self.device)
+
         padding_mask_x = make_padding_mask(x, self.pad_idx)
         padding_mask_y = make_padding_mask(y, self.pad_idx)
         
@@ -346,7 +349,7 @@ class Transformer(nn.Module):
         x_encoded = self.encoder(x_embedded_pos, key_padding_mask = padding_mask_x)
 
         y_embedded_pos = self.pos_encoding(self.embed(y)*np.sqrt(self.d_model))
-        y_decoded = self.decoder(x_encoded, y_embedded_pos, padding_mask_x = padding_mask_x, padding_mask_y = padding_mask_y)
+        y_decoded = self.decoder(x_encoded, y_embedded_pos, x_padding_mask=padding_mask_x, y_padding_mask=padding_mask_y)
         # will need padding mask
           
         return self.exit_linear_projection(y_decoded)
@@ -364,6 +367,8 @@ class Transformer(nn.Module):
             f"encoding max_len ({self.pos_encoding.pos_enc.shape[1]}); "
             f"rebuild the model with a larger max_len if longer sequences are needed"
         )
+
+        x = x.to(self.device)
 
         self.eval()
 
@@ -401,4 +406,4 @@ class Transformer(nn.Module):
         #words separated by ;
         pass
 
-# UNDERSTAND IF WHEN HOW I NEED PADDING MASK    
+ 

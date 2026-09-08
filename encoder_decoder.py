@@ -344,7 +344,7 @@ class MultiHeadCrossAttention(nn.Module):
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01, scheduler_step_size = 100):
+    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01, scheduler_step_size = 100, use_weight_decay = False):
         # for starters start with a light model, just to check its workings
         # char_to_idx : dictionary from char to int
 
@@ -377,6 +377,9 @@ class Transformer(nn.Module):
         self.exit_linear_projection = nn.Linear(d_model, vocab_size) # in the original paper they use weight tying (basically transpose embed)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        if use_weight_decay: 
+            self.optimizer = torch.optim.AdamW(self.parameters(), lr=lr,weight_decay=1e-2)
+
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_step_size, gamma=0.5)
         self.criterion = nn.CrossEntropyLoss(ignore_index=self.pad_idx) # ignore spaces, works on pads in the target
         

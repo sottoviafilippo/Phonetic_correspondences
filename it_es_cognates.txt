@@ -118,6 +118,12 @@ buona;buena
 buone;buenas
 buoni;buenos
 buono;bueno
+cadere;caer
+caduto;caído
+caduta;caída
+caduti;caídos
+cadute;caídas
+cadendo;cayendo
 camminando;caminando
 camminare;caminar 
 camminato;caminado
@@ -346,6 +352,12 @@ fiamma;llama
 fiamme;llamas
 figlia;hija
 figlio;hijo
+finalizzare;finalizar
+finalizzato;finalizado
+finalizzata;finalizada
+finalizzato;finalizados
+finalizzate;finalizadas
+finalizzando;finalizando 
 fine;fin
 fino;fino
 fiore;flor

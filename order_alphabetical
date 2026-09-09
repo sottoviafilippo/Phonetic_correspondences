@@ -1,6 +1,3 @@
-#written by Claude, orders a given txt file in alphabetical order
-#eliminates duplicates
-#eliminates space before and after semicolons
 import sys
 import re
 
@@ -15,12 +12,14 @@ def get_key(line):
 def sort_file_keep_header(input_path, output_path=None):
     with open(input_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
+    
     # Split off leading comment block (only comments at the very top)
     i = 0
     while i < len(lines) and lines[i].lstrip().startswith("#"):
         i += 1
     header = lines[:i]
     body = lines[i:]
+    
     # Normalize, drop duplicates (comparing normalized content), and skip blank lines
     seen = set()
     unique_body = []
@@ -31,15 +30,22 @@ def sort_file_keep_header(input_path, output_path=None):
         if key not in seen:
             seen.add(key)
             unique_body.append(key)
+            
     # Sort remaining lines alphabetically (case-insensitive)
     body_sorted = sorted(unique_body, key=lambda l: l.lower())
+    
+    # Calculate total characters excluding semicolons for lines not starting with '#'
+    total_chars_no_semicolon = sum(len(line.replace(";", "")) for line in body_sorted)
+
     output_path = output_path or input_path
     with open(output_path, "w", encoding="utf-8") as f:
         f.writelines(header)
         f.writelines(
             line if line.endswith("\n") else line + "\n" for line in body_sorted
         )
+        
     print(f"{len(lines) - len(header)} lines processed -> {len(body_sorted)} unique lines written.")
+    print(f"Total characters (excluding semicolons) in body lines: {total_chars_no_semicolon}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

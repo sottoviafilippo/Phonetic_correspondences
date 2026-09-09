@@ -56,8 +56,10 @@ def make_padding_mask(seq, pad_idx):
 
 import random
 
-def load_txt_file(filepath, shuffle=True):
-    """Read txt file in format x;y, with an option to shuffle the rows."""
+import random
+
+def load_txt_file(filepath, shuffle=True, seed=42):
+    """Read txt file in format x;y, with an option to shuffle the rows reproducibly."""
     sources, targets = [], []
 
     with open(filepath, encoding="utf-8") as f:
@@ -69,10 +71,11 @@ def load_txt_file(filepath, shuffle=True):
             sources.append(src.strip())
             targets.append(tgt.strip())
 
-    # Shuffle both lists together to keep source-target pairs aligned
+    # Shuffle both lists together reproducibly to keep source-target pairs aligned
     if shuffle:
         combined = list(zip(sources, targets))
-        random.shuffle(combined)
+        rng = random.Random(seed)
+        rng.shuffle(combined)
         sources, targets = zip(*combined)
         sources, targets = list(sources), list(targets)
 

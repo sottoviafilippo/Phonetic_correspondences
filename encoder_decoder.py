@@ -344,7 +344,7 @@ class MultiHeadCrossAttention(nn.Module):
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01, scheduler_step_size = 100, use_weight_decay = False):
+    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01, scheduler_step_size = 100, use_weight_decay = False, reporting = 100):
         # for starters start with a light model, just to check its workings
         # char_to_idx : dictionary from char to int
 
@@ -373,6 +373,8 @@ class Transformer(nn.Module):
 
         self.encoder = Encoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
         self.decoder = Decoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
+
+        self.reporting = reporting # reporting interval for loss at epochs
 
         self.exit_linear_projection = nn.Linear(d_model, vocab_size) # in the original paper they use weight tying (basically transpose embed)
 
@@ -484,7 +486,7 @@ class Transformer(nn.Module):
             self.losses.append(loss_batch.item())
             self.losses_eval.append(loss_batch_eval.item())
 
-            if epoch%100 == 0:
+            if epoch % self.reporting == 0:
                 print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item(), " loss_eval = ", loss_batch_eval.item())
 
 

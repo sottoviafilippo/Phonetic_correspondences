@@ -24,6 +24,8 @@ alba;alba
 albe;albas
 alberi;árboles
 albero;árbol
+corrente;corriente 
+correnti;corrientes
 alcuna;alguna
 alcune;algunas
 alcuni;algunos
@@ -993,6 +995,17 @@ notizie;noticias
 notte;noche
 notti;noches
 novanta;noventa
+muove;mueve 
+movimento;movimiento
+movimenti;movimientos
+meno;menos
+margine;margen 
+margini;margenes
+ortica;ortiga 
+ortiche;ortigas
+flusso;flujo
+flussi;flujos
+dissi;dije
 nove;nueve
 nube;nube
 nubi;nubes

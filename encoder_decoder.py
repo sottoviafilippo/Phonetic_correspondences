@@ -146,13 +146,15 @@ class PositionalEncodingModule(nn.Module):
 
 
 class FeedForward(nn.Module):
-    def __init__(self, d_model, d_hidden):
+    def __init__(self, d_model, d_hidden, dropout: float = 0.1):
         super().__init__()
 
         self.network = nn.Sequential(
             nn.Linear(d_model, d_hidden), 
             nn.ReLU(),
-            nn.Linear(d_hidden, d_model)
+            nn.Dropout(dropout),
+            nn.Linear(d_hidden, d_model),
+            nn.Dropout(dropout)
         )
 
     def forward(self, x):
@@ -161,7 +163,7 @@ class FeedForward(nn.Module):
 
 class EncoderLayer(nn.Module):
     # embedding and position encoding to be applied before calling the encoder
-    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
 
         self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = False)
@@ -170,15 +172,17 @@ class EncoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model) 
 
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x, key_padding_mask = None):
         attention_output = self.mhattention(x, key_padding_mask = key_padding_mask)
-        x_and_attention = self.norm1(x + attention_output) # add and norm
-        return self.norm2(x_and_attention + self.fforward(x_and_attention)) # add and norm
+        x_and_attention = self.norm1(x + self.dropout(attention_output)) # add and norm
+        return self.norm2(x_and_attention + self.dropout(self.fforward(x_and_attention))) # add and norm
 
 
 class DecoderLayer(nn.Module):
     # embedding and position encoding to be applied before calling the encoder
-    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
     
         self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = True) # need masking here
@@ -188,24 +192,26 @@ class DecoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model)
         self.norm3 = nn.LayerNorm(d_model) 
+
+        self.dropout = nn.Dropout(dropout)
     
     def forward(self, x, y, x_padding_mask = None, y_padding_mask = None):
         # x: input (encoded), y: output
         attention_output = self.mhattention(y, key_padding_mask = y_padding_mask)
-        y_and_attention = self.norm1(y + attention_output) # add and norm
+        y_and_attention = self.norm1(y + self.dropout(attention_output)) # add and norm
         cross_attention_xy = self.crossattention(y_and_attention, x, key_padding_mask = x_padding_mask)
-        y_and_cross_attention = self.norm2(y_and_attention + cross_attention_xy) # add and norm
+        y_and_cross_attention = self.norm2(y_and_attention + self.dropout(cross_attention_xy)) # add and norm
         ff_y_and_cross = self.fforward(y_and_cross_attention)
 
-        return self.norm3(ff_y_and_cross + y_and_cross_attention)
+        return self.norm3(ff_y_and_cross + self.dropout(y_and_cross_attention))
 
 
 class Encoder(nn.Module):
-    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
         # n_layers: number of times the encoder is repeated. in the original paper it was equal to 6
         super().__init__()
 
-        self.encoder = nn.ModuleList([EncoderLayer(d_model, d_hidden, dk, dv, h) for i in range(n_layers)])
+        self.encoder = nn.ModuleList([EncoderLayer(d_model, d_hidden, dk, dv, h, dropout=dropout) for i in range(n_layers)])
 
     def forward(self, x, key_padding_mask = None):
         for enc in self.encoder:
@@ -214,10 +220,10 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int):
+    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
 
-        self.decoder = nn.ModuleList([DecoderLayer(d_model, d_hidden, dk, dv, h) for i in range(n_layers)])
+        self.decoder = nn.ModuleList([DecoderLayer(d_model, d_hidden, dk, dv, h,dropout=dropout) for i in range(n_layers)])
 
     def forward(self, x, y, x_padding_mask = None, y_padding_mask = None):
         for dec in self.decoder:
@@ -251,7 +257,7 @@ class OneHeadAttention(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model:int, dk:int, dv: int, h: int, masking: bool = True):
+    def __init__(self, d_model:int, dk:int, dv: int, h: int, masking: bool = True, dropout: float = 0.1):
         super().__init__()
 
         # d_model embedding dimension
@@ -265,6 +271,8 @@ class MultiHeadAttention(nn.Module):
         self.WK = nn.Linear(d_model, h * dk)
         self.WV = nn.Linear(d_model, h * dv)
         self.WO = nn.Linear(h * dv, d_model)
+
+        self.attn_dropout = nn.Dropout(dropout) # dropout on attention weights
         
     def forward(self, x, key_padding_mask = None):
 
@@ -291,7 +299,8 @@ class MultiHeadAttention(nn.Module):
             # potential issue: if I completely mask a row I'll get nans. TO DO: write warning/assert 
             matt = matt.masked_fill(~key_padding_mask, float("-inf"))
 
-        matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim    
+        matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim 
+        matt_softmax = self.attn_dropout(matt_softmax) # apply dropout here   
 
         softmax_mult_V = torch.matmul(matt_softmax, V)
 
@@ -310,7 +319,7 @@ class MultiHeadCrossAttention(nn.Module):
     # to be used in the Decoder
     # for comments see the MultiHeadAttention class
 
-    def __init__(self, d_model:int, dk:int, dv: int, h: int):
+    def __init__(self, d_model:int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
 
         # d_model embedding dimension
@@ -323,6 +332,8 @@ class MultiHeadCrossAttention(nn.Module):
         self.WK = nn.Linear(d_model, h * dk)
         self.WV = nn.Linear(d_model, h * dv)
         self.WO = nn.Linear(h * dv, d_model)
+
+        self.attn_dropout = nn.Dropout(dropout) # dropout on attention weights
         
     def forward(self, queries, keys, key_padding_mask = None):
         # no masking for cross-attention: one obviously looks at all queries every time
@@ -340,6 +351,8 @@ class MultiHeadCrossAttention(nn.Module):
             matt = matt.masked_fill(~key_padding_mask, float("-inf"))
 
         matt_softmax = torch.softmax(matt, -1)    
+        matt_softmax = self.attn_dropout(matt_softmax) # apply dropout
+
         V_times_softmax = torch.matmul(matt_softmax, V).transpose(-3, -2).contiguous().view(batch_length, target_length, self.h * self.dv)
 
         return self.WO(V_times_softmax)
@@ -347,7 +360,7 @@ class MultiHeadCrossAttention(nn.Module):
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, feedforward_hidden_dim_to_d_model_ratio = 4, lr = 0.01, scheduler_step_size = 100, use_weight_decay = False, reporting = 100):
+    def __init__(self, d_model, vocab_size, char_to_idx, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, hidden_dim_over_d_model = 4, lr = 0.01, scheduler_step_size = 100, use_weight_decay = False, reporting = 100, dropout: float = 0.1):
         # for starters start with a light model, just to check its workings
         # char_to_idx : dictionary from char to int
 
@@ -365,7 +378,7 @@ class Transformer(nn.Module):
         self.char_to_idx = char_to_idx # char to int dictionary
         self.n_heads = n_heads
         self.n_layers = n_layers
-        self.feedforward_hidden_dim = feedforward_hidden_dim_to_d_model_ratio * d_model # 4 in 1706.03762 paper 
+        self.feedforward_hidden_dim = hidden_dim_over_d_model * d_model # 4 in 1706.03762 paper 
 
         self.pad_idx = self.char_to_idx['<pad>']
 
@@ -374,8 +387,10 @@ class Transformer(nn.Module):
         self.pos_encoding = PositionalEncodingModule(d_model, max_len=max_len)
         # the embedding lives directly in Transformer because Encoder and Decoder share it
 
-        self.encoder = Encoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
-        self.decoder = Decoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads)
+        self.dropout = nn.Dropout(dropout)
+
+        self.encoder = Encoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads, dropout = dropout)
+        self.decoder = Decoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads, dropout = dropout)
 
         self.reporting = reporting # reporting interval for loss at epochs
 
@@ -406,10 +421,10 @@ class Transformer(nn.Module):
         padding_mask_x = make_padding_mask(x, self.pad_idx)
         padding_mask_y = make_padding_mask(y, self.pad_idx)
         
-        x_embedded_pos = self.pos_encoding(self.embed(x)*np.sqrt(self.d_model))
+        x_embedded_pos = self.dropout(self.pos_encoding(self.embed(x)*np.sqrt(self.d_model)))
         x_encoded = self.encoder(x_embedded_pos, key_padding_mask = padding_mask_x)
 
-        y_embedded_pos = self.pos_encoding(self.embed(y)*np.sqrt(self.d_model))
+        y_embedded_pos = self.dropout(self.pos_encoding(self.embed(y)*np.sqrt(self.d_model)))
         # use padding masks for x and y
         y_decoded = self.decoder(x_encoded, y_embedded_pos, x_padding_mask=padding_mask_x, y_padding_mask=padding_mask_y)
           

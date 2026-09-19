@@ -47,6 +47,8 @@ altra;otra
 altre;otras
 altri;otros
 altro;otro
+altura;altura
+alture;alturas
 ama;ama
 amabile;amable 
 amabili;amables
@@ -311,6 +313,8 @@ cascate;cascadas
 case;casas
 cassa;caja
 casse;cajas
+cassetta;cajita
+cassette;cajitas
 cassone;cajón
 cassoni;cajones
 castagna;castaña
@@ -1149,6 +1153,8 @@ miele;miel
 mieli;mieles
 migliore;mejor
 migliori;mejores
+milione;millón
+milioni;millones
 mille;mil
 minore;minor
 minori;minores
@@ -1438,6 +1444,8 @@ pietre;piedras
 piogge;lluvias
 pioggia;lluvia
 piombo;plomo
+piove;llueve
+piovuto;llovido
 piscina;piscina
 piscine;piscinas
 piuma;pluma
@@ -1463,6 +1471,11 @@ pone;pone
 pongono;ponen
 ponte;puente
 ponti;puentes
+popolato;poblado
+popolazione;población
+popolazioni;poblaciones
+popoli;pueblos 
+popolo;pueblo
 porci;puercos
 porco;puerco
 porta;puerta
@@ -2013,6 +2026,10 @@ tessuti;tejidos
 tessuto;tejido
 tessuto;tejido 
 tiene;tiene
+tiepida;tibia
+tiepide;tibias
+tiepidi;tibios
+tiepido;tibio
 timida;tímida
 timidamente;tímidamente
 timide;tímidas
@@ -2138,13 +2155,13 @@ venduta;vendida
 vendute;vendidas 
 venduti;vendidos
 venduto;vendido 
+venendo;viniendo
 vengo;vengo
 vengono;vienen
 venire;venir
-venuto;venido
-venendo;viniendo
 venti;vientos
 vento;viento
+venuto;venido
 verde;verde
 verdi;verdes
 verdura;verdura 
@@ -2153,6 +2170,8 @@ veritiero;verdadero
 verità;verdad
 vestiti;vestidos
 vestito;vestido
+vetraia;vidriera
+vetraie;vidrieras
 vetro;vidrio
 vi;os
 viaggi;viajes

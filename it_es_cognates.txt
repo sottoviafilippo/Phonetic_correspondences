@@ -13,6 +13,7 @@ acqua;agua
 acque;aguas
 aeroporti;aeropuertos
 aeroporto;aeropuerto
+affanno;afán
 affezionando;aficionando
 affezionata;aficionada
 affezionate;aficionadas
@@ -76,6 +77,7 @@ ampi;anchos
 ampia;ancha
 ampie;anchas
 ampio;ancho
+anciana;anziana
 andando;andando
 andare;andar
 andato;andado
@@ -93,6 +95,9 @@ antica;antigua
 antiche;antiguas
 antichi;antiguos
 antico;antiguo
+anziane;ancianas
+anziani;ancianos
+anziano;anciano
 aperta;abierta
 aperte;abiertas
 aperti;abiertos
@@ -165,6 +170,7 @@ avvocati;avogados
 avvocato;avogado
 azione;acción
 azioni;acciones
+bagnare;bañar
 bagni;baños
 bagno;baño
 ballando;bailando
@@ -443,6 +449,8 @@ conosciuto;conocido
 conosco;conozco 
 consigli;consejos
 consiglio;consejo
+contenitore;contenedor
+contenitori;contenedores
 contenta;contenta
 contente;contentas
 contenti;contentos
@@ -491,6 +499,8 @@ costando;costando
 costare;costar
 costato;costado
 coste;costas
+costi;costos
+costo;costo
 costruendo;construiendo
 costruire;construir
 costruito;construido 
@@ -600,6 +610,7 @@ difendendo;defendiendo
 difendere;defender
 difficile;difícil
 difficili;difíciles
+difficoltà;dificultad
 diffondere;difundir
 digitale;digital
 digitali;digitales
@@ -618,6 +629,10 @@ discorso;discurso
 disegnare;diseñar
 disegni;diseños
 disegno;diseño
+disfatta;deshecha
+disfatte;deschechas
+disfatti;deshechos
+disfatto;deshecho
 dissi;dije
 distanza;distancia
 distanze;distancias
@@ -805,8 +820,12 @@ gatta;gata
 gatte;gatas
 gatti;gatos
 gatto;gato
+gelata;helada
 gelatai;heladeros
 gelataio;heladero
+gelate;heladas
+gelati;helados 
+gelato;helado 
 generale;general
 generali;generales
 generazione;generación
@@ -930,6 +949,8 @@ incontrato;encontrado
 indipendente;independiente
 indipendentemente;independientemente
 indipendenti;independientes
+infelice;infeliz
+infelici;infelices
 inferiore;inferior 
 inferiori;inferiores
 ingegnere;ingeniero
@@ -978,6 +999,8 @@ lacrima;lágrima
 lacrime;lágrimas
 laghi;lagos
 lago;lago
+lamentevole;lamentable
+lamentevoli;lamentables 
 lana;lana
 larga;larga
 larghe;largas
@@ -1153,6 +1176,7 @@ miele;miel
 mieli;mieles
 migliore;mejor
 migliori;mejores
+migliorare;mejorar
 milione;millón
 milioni;millones
 mille;mil
@@ -1162,10 +1186,22 @@ minuta;menuda
 minute;menudas
 minuti;menudos
 minuto;menudo
+miserabile;miserable
+miserabili;miserables
+moderna;moderna
+moderne;modernas
+moderni;modernos
+moderno;moderno
 modi;modos
 modo;modo
 mogli;mujeres
 moglie;mujer
+molesta;molesta
+moleste;molestas
+molesti;molestos
+molestia;molestia 
+molestie;molestias
+molesto;molesto
 molle;muelle
 molli;muelles
 molta;mucha
@@ -1252,6 +1288,7 @@ novanta;noventa
 nove;nueve
 novella;novela 
 novelle;novelas
+novità;novedad
 nube;nube
 nubi;nubes
 nuova;nueva
@@ -1536,7 +1573,9 @@ probabile;probable
 probabili;probables
 probabilmente;probablemente
 problema;problema
+problema;problema 
 problemi;problemas
+problemi;problemas 
 professore;profesor
 professori;profesores
 profonda;profunda
@@ -1626,7 +1665,9 @@ re;rey
 realista;realista
 realiste;realistas
 realisti;realistas
+recente;reciente
 recentemente;recientemente
+recenti;recientes
 regali;regalos
 regalo;regalo
 regina;reina
@@ -1697,6 +1738,8 @@ rossa;roja
 rosse;rojas
 rossi;rojos
 rosso;rojo
+rottura;rotura 
+rotture;roturas
 ruota;rueda 
 ruote;ruedas
 russa;rusa 
@@ -1841,6 +1884,8 @@ settanta;setenta
 sette;siete
 settimana;semana
 settimane;semanas
+sforzi;esfuerzos
+sforzo;esfuerzo
 si;se
 sicura;segura
 sicuramente;seguramente
@@ -2025,6 +2070,8 @@ tesoro;tesoro
 tessuti;tejidos
 tessuto;tejido
 tessuto;tejido 
+tetti;techos
+tetto;techo
 tiene;tiene
 tiepida;tibia
 tiepide;tibias
@@ -2083,7 +2130,7 @@ tristi;tristes
 trota;trucha 
 trote;truchas
 trucchi;trucos
-trucco;truco 
+trucco;truco
 tu;tú
 tubi;tubos
 tubo;tubo

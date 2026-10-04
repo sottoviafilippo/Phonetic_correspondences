@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-#from typing import Callable
 import numpy as np
+import random
 
 
 # roughly trying to follow the structure of the "Attention is all you need" paper https://arxiv.org/abs/1706.03762
@@ -12,11 +12,9 @@ import numpy as np
 
 # TO DO LIST
 
-# define mask outside for better efficiency
-
-# modern papers use pre-layer norm (more stable)
-
-# update padding mask to that I does not mask pads WITHIN the sentence (e.g. to distinguish "la verdad", "las verdades" giving "la verità", "le verità" in Italian)
+# 1) define mask outside for better efficiency
+# 2) modern papers use pre-layer norm (more stable)
+# 3) update padding mask to that I does not mask pads WITHIN the sentence (e.g. to distinguish "la verdad", "las verdades" giving "la verità", "le verità" in Italian)
 # (although maybe positional encoding, done before masking, might still contribute to distinguishing the two cases)
 
 
@@ -53,10 +51,6 @@ def make_padding_mask(seq, pad_idx):
     # returns (batch, 1, 1, seq_len) — broadcasts over heads and query positions
     return (seq != pad_idx).unsqueeze(1).unsqueeze(2)
 
-
-import random
-
-import random
 
 def load_txt_file(filepath, shuffle=True, seed=42):
     """Read txt file in format x;y, with an option to shuffle the rows reproducibly."""
@@ -153,8 +147,7 @@ class FeedForward(nn.Module):
             nn.Linear(d_model, d_hidden), 
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(d_hidden, d_model),
-            nn.Dropout(dropout)
+            nn.Linear(d_hidden, d_model)
         )
 
     def forward(self, x):
@@ -166,8 +159,8 @@ class EncoderLayer(nn.Module):
     def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
 
-        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = False)
-        self.fforward = FeedForward(d_model, d_hidden)
+        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = False, dropout=dropout)
+        self.fforward = FeedForward(d_model, d_hidden, dropout=dropout)
         # define two norms with independent parameters (gamma and beta, see https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html):
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model) 
@@ -185,9 +178,9 @@ class DecoderLayer(nn.Module):
     def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
     
-        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = True) # need masking here
-        self.crossattention = MultiHeadCrossAttention(d_model, dk, dv, h)
-        self.fforward = FeedForward(d_model, d_hidden)
+        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, masking = True, dropout=dropout) # need masking here
+        self.crossattention = MultiHeadCrossAttention(d_model, dk, dv, h, dropout=dropout)
+        self.fforward = FeedForward(d_model, d_hidden, dropout=dropout)
         # define three norms with independent parameters:
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model)
@@ -203,7 +196,7 @@ class DecoderLayer(nn.Module):
         y_and_cross_attention = self.norm2(y_and_attention + self.dropout(cross_attention_xy)) # add and norm
         ff_y_and_cross = self.fforward(y_and_cross_attention)
 
-        return self.norm3(ff_y_and_cross + self.dropout(y_and_cross_attention))
+        return self.norm3(y_and_cross_attention + self.dropout(ff_y_and_cross)) # apply dropout to the feedforward output
 
 
 class Encoder(nn.Module):
@@ -490,17 +483,24 @@ class Transformer(nn.Module):
         y_target_eval = y_target_eval.to(self.device)
 
         for epoch in range(n_epochs):
+            self.train()
             self.optimizer.zero_grad()
 
             predictions_batch = self(x, y)
             loss_batch = self.criterion(predictions_batch.transpose(1, 2), y_target) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
-            predictions_batch_eval = self(x_eval, y_eval)
-            loss_batch_eval = self.criterion(predictions_batch_eval.transpose(1, 2), y_target_eval) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
-
+            
             loss_batch.backward()
             self.optimizer.step()
             self.scheduler.step()
 
+            self.eval() # turns dropout off
+            # note that the training loss is computed with dropout on, which may make it noisier
+
+            with torch.no_grad():
+                predictions_batch_eval = self(x_eval, y_eval)
+                loss_batch_eval = self.criterion(predictions_batch_eval.transpose(1, 2), y_target_eval)
+
+            # eval loss computed after the optimizing step, as it should for better consistency
             self.losses.append(loss_batch.item())
             self.losses_eval.append(loss_batch_eval.item())
 
@@ -527,10 +527,10 @@ class Transformer(nn.Module):
         self.fit(x, y, target, x_eval, y_eval, y_target_eval, n_epochs = n_epochs)
 
 
-    def count_parameters_by_module(model: nn.Module, trainable_only: bool = True) -> dict:
+    def count_parameters_by_module(self, trainable_only: bool = True) -> dict:
         """counts the number of parameters, in total and for every submodule"""
         counts = {}
-        for name, module in model.named_children():
+        for name, module in self.named_children():
             if trainable_only:
                 n = sum(p.numel() for p in module.parameters() if p.requires_grad)
             else:

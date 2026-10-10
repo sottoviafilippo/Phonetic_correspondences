@@ -1174,9 +1174,9 @@ midolli;meollos
 midollo;meollo
 miele;miel
 mieli;mieles
+migliorare;mejorar
 migliore;mejor
 migliori;mejores
-migliorare;mejorar
 milione;millón
 milioni;millones
 mille;mil
@@ -1546,6 +1546,7 @@ poveri;pobres
 povero;pobre
 prati;prados
 prato;prado
+precisione;precisión
 preoccupando;preocupando 
 preoccupare;preocupar
 preoccupata;preocupada
@@ -1717,6 +1718,7 @@ rispondendo;respondiendo
 rispondere;responder
 risposta;respuesta
 risposte;respuestas
+risultando;resultando
 risultare;resultar
 risultati;resultados
 risultato;resultado
@@ -1937,6 +1939,8 @@ sorda;sorda
 sorde;sordas
 sordi;sordos 
 sordo;sordo 
+sorpresa;sorpresa
+sorprese;sorpresas
 spada;espada 
 spade;espadas
 spagna;españa
@@ -2007,6 +2011,8 @@ strana;extraña
 strane;extrañas
 strani;extraños
 strano;extraño
+strategia;estrategia
+strategie;estretegias
 stretta;estrecha
 strette;estrechas
 stretti;estrechos

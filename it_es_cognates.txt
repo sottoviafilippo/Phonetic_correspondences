@@ -5,12 +5,23 @@
 #in the future: add correspondences between pair of words (pronouns + verb, article + noun) to distinguish e.g. la verità vs le verità (verdad(es))
 # for now now words containing "ò" in italian 
 a;a
+accompagnando;acompañando
+accompagnare;acompañar 
+accompagnata;acompañada
+accompagnate;acompañadas
+accompagnati;acompañados
+accompagnato;acompañado
 accostumata;acostrumbrada
 accostumate;acostrumbradas
 accostumati;acostrumbrados
 accostumato;acostrumbrado
 acqua;agua
 acque;aguas
+acuta;aguda 
+acutamente;agudamente
+acute;agudas 
+acuti;agudos
+acuto;agudo
 aeroporti;aeropuertos
 aeroporto;aeropuerto
 affanno;afán
@@ -25,6 +36,10 @@ affilata;afilada
 affilate;afiladas
 affilati;afilados 
 affilato;afilado 
+agente;agente 
+agenti;agentes
+agile;ágil
+agili;ágiles
 aglio;ajo
 aiutare;ayudar
 aiutata;ayudada
@@ -205,6 +220,8 @@ biglietti;billetes
 biglietto;billete
 bocca;boca
 bocche;bocas
+bordi;bordos
+bordo;bordo 
 boschi;bosques
 bosco;bosque
 bottiglia;botella
@@ -213,8 +230,10 @@ bracci;brazos
 braccio;brazo
 brezza;brisa
 brezze;brisas
+brillando;brillando
 brillante;brillante
 brillanti;brillantes
+brillare;brillar 
 bue;buey 
 buoi;bueyes
 buona;buena
@@ -240,6 +259,7 @@ caduta;caída
 cadute;caídas
 caduti;caídos
 caduto;caído
+caffè;café
 calma;calma
 calore;calor 
 calori;calores
@@ -255,6 +275,8 @@ cambiato;cambiado
 cambio;cambio
 camicia;camisa
 camicie;camisas
+camionetta;camioneta 
+camionette;camionetas
 cammelli;camellos
 cammello;camello 
 camminando;caminando
@@ -317,6 +339,8 @@ casa;casa
 cascata;cascada
 cascate;cascadas
 case;casas
+casi;casos
+caso;caso 
 cassa;caja
 casse;cajas
 cassetta;cajita
@@ -499,6 +523,7 @@ costando;costando
 costare;costar
 costato;costado
 coste;costas
+coste;cuestas
 costi;costos
 costo;costo
 costruendo;construiendo
@@ -545,6 +570,7 @@ culture;culturas
 curiosa;curiosa
 curiose;curiosas
 curiosi;curiosos
+curiosità;curiosidad
 curioso;curioso
 cuscini;cojines
 cuscino;cojín
@@ -638,6 +664,7 @@ distanza;distancia
 distanze;distancias
 dito;dedo
 dividere;dividir
+divorare;devorar
 dolce;dulce
 dolcemente;dulcemente
 dolci;dulces
@@ -758,6 +785,8 @@ figli;hijos
 figlia;hija
 figlie;hijas
 figlio;hijo
+fili;hilos
+filo;hilo
 finale;final 
 finali;finales
 finalizzando;finalizando 
@@ -804,6 +833,8 @@ freddo;frío
 fronte;frente
 fronti;frentes
 frutta;fruta
+fuga;fuga
+fughe;fugas
 fumi;humos
 fumo;humo
 funerale;funeral 
@@ -863,9 +894,12 @@ girando;girando
 girante;girante 
 giranti;girantes
 girare;girar
+girare;girar 
 girato;girado 
 giudice;juez
 giudici;jueces
+giudizi;juicios
+giudizio;juicio
 giugno;junio
 giunchi;juncos
 giunco;junco
@@ -941,6 +975,8 @@ incantata;encantada
 incantate;encantadas
 incantati;encantados
 incantato;encantado
+incidente;incidente
+incidenti;incidentes
 incontrare;encontrar
 incontrata;encontrada
 incontrate;encontradas
@@ -1133,6 +1169,8 @@ manti;mantos
 manto;manto
 mappa;mapa
 mare;mar
+marginale;marginal 
+marginali;marginales
 margine;margen 
 margini;margenes
 mari;mares
@@ -1214,6 +1252,7 @@ monete;monedas
 montaggio;montaje
 montagna;montaña
 montagne;montañas
+morendo;muriendo
 morire;morir
 morta;muertas
 morte;muerta
@@ -1245,6 +1284,9 @@ necessari;necesarios
 necessaria;necesaria
 necessarie;necesarias
 necessario;necesario
+necessitando;necessitando
+necessitare;necessitar
+necessitato;necessitado
 negazione;negación
 negazioni;negaciones
 negozi;negocios
@@ -1314,6 +1356,7 @@ odore;olor
 odori;olores
 offerta;oferta
 offesa;ofensa
+offese;ofensas
 oggettivo;objetivo
 oggetto;objeto
 oggi;hoy
@@ -1388,6 +1431,7 @@ pagato;pagado
 paglia;paja
 paglie;pajas
 paio;par
+pancia;panza
 pane;pan
 pani;panes
 pantaloni;pantalones
@@ -1410,6 +1454,7 @@ passando;pasando
 passare;pasar 
 passati;pasados
 passato;pasado
+passeggero;pasajero 
 passi;pasos
 passione;pasión
 passioni;pasiones
@@ -1460,6 +1505,7 @@ pesce;pez
 pesci;peces
 pesi;pesos
 peso;peso
+pesseggeri;pasajeros
 petti;pechos
 petto;pecho
 piacere;placer
@@ -1580,6 +1626,7 @@ problemi;problemas
 professore;profesor
 professori;profesores
 profonda;profunda
+profondamente;profundamente
 profonde;profundas
 profondi;profundos
 profondo;profundo
@@ -1722,6 +1769,7 @@ risultando;resultando
 risultare;resultar
 risultati;resultados
 risultato;resultado
+ritorcere;retorcer
 riunendo;reuniendo
 riunire;reunir
 riunita;reunida
@@ -2064,6 +2112,12 @@ tenuta;tenida
 tenute;tenidas
 tenuti;tenidos
 tenuto;tenido
+terminando;terminando
+terminare;terminar 
+terminata;terminada 
+terminate;terminadas 
+terminati;terminados
+terminato;terminado 
 terra;tierra
 terre;tierras
 terreni;terrenos
@@ -2131,6 +2185,8 @@ treni;trenes
 treno;tren
 treno;tren 
 trenta;treinta
+trippa;tripa 
+trippe;tripas 
 triste;triste
 tristi;tristes
 trota;trucha 
@@ -2143,6 +2199,8 @@ tubo;tubo
 turista;turista
 turiste;turistas
 turisti;turistas
+turpe;torpe 
+turpi;torpes
 tutta;toda
 tuttavia;todavía 
 tutte;todas
@@ -2214,6 +2272,8 @@ vengono;vienen
 venire;venir
 venti;vientos
 vento;viento
+ventre;vientre
+ventri;vientres
 venuto;venido
 verde;verde
 verdi;verdes
@@ -2257,6 +2317,8 @@ volante;volante
 volanti;volantes
 volare;volar
 volato;volado
+voli;vuelos
+volo;vuelo
 volontà;voluntad
 vulcani;volcanes
 vulcano;volcán

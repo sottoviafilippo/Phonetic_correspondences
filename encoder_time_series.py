@@ -13,6 +13,7 @@ import numpy as np
 # TO ADD: windowing function
 # key_padding_mask still needed for sequences of different length?
 
+# large number of variables, first apply dimensional reduction?
 
 
 class PositionalEncodingModule(nn.Module):
@@ -171,13 +172,12 @@ class Transformer(nn.Module):
         self.feedforward_hidden_dim = hidden_dim_over_d_model * d_model # 4 in 1706.03762 paper 
 
         self.pos_encoding = PositionalEncodingModule(d_model, max_len=max_len)
-        # the embedding lives directly in Transformer because Encoder and Decoder share it
 
         self.embed = nn.Linear(n_features, d_model) # use "embed" name, since adapted from model handling text
         self.dropout = nn.Dropout(dropout)
         self.encoder = Encoder(n_layers, d_model, self.feedforward_hidden_dim, dk, dv, h = n_heads, dropout = dropout)
         self.reporting = reporting # reporting interval for loss at epochs
-        self.exit_linear_projection = nn.Linear(d_model, n_features) # in the original paper they use weight tying (basically transpose embed)
+        self.exit_linear_projection = nn.Linear(d_model, n_features) 
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         if use_weight_decay: 
@@ -189,30 +189,23 @@ class Transformer(nn.Module):
         self.to(self.device)
 
 
-    def forward(self, x, y):
-        # x: source, y: target sequence
+    def forward(self, x):
+        # x: source
 
-        # always want batch dimension 1, even for simple tests:
-        if x.dim() == 1:
+        # always want a batch dimension, even for simple tests: (Length, Features) -> (1, Length, Features)
+        if x.dim() == 2:
             x = x.unsqueeze(0)
-        if y.dim() == 1:
-            y = y.unsqueeze(0)
 
         x = x.to(self.device)
-        y = y.to(self.device)
 
         x_embedded_pos = self.dropout(self.pos_encoding(self.embed(x)*np.sqrt(self.d_model)))
         x_encoded = self.encoder(x_embedded_pos)
-
-        y_embedded_pos = self.dropout(self.pos_encoding(self.embed(y)*np.sqrt(self.d_model)))
-        y_decoded = self.decoder(x_encoded, y_embedded_pos)
           
-        return self.exit_linear_projection(y_decoded)
+        return self.exit_linear_projection(x_encoded)
 
 
-    def fit(self, x, y, y_target, x_eval, y_eval, y_target_eval, n_epochs: int = 1000):
+    def fit(self, x, y_target, x_eval, y_target_eval, n_epochs: int = 1000):
         # x: input
-        # y: decoder input
         # y_target: expected outcomes
 
         self.epochs = np.arange(n_epochs)
@@ -220,18 +213,16 @@ class Transformer(nn.Module):
         self.losses_eval = []
 
         x = x.to(self.device)
-        y = y.to(self.device)
         y_target = y_target.to(self.device)
         x_eval = x_eval.to(self.device)
-        y_eval = y_eval.to(self.device)
         y_target_eval = y_target_eval.to(self.device)
 
         for epoch in range(n_epochs):
             self.train()
             self.optimizer.zero_grad()
 
-            predictions_batch = self(x, y)
-            loss_batch = self.criterion(predictions_batch.transpose(1, 2), y_target) 
+            predictions_batch = self(x)
+            loss_batch = self.criterion(predictions_batch, y_target) 
 
             loss_batch.backward()
             self.optimizer.step()
@@ -241,8 +232,8 @@ class Transformer(nn.Module):
             # note that the training loss is computed with dropout on, which may make it noisier
 
             with torch.no_grad():
-                predictions_batch_eval = self(x_eval, y_eval)
-                loss_batch_eval = self.criterion(predictions_batch_eval.transpose(1, 2), y_target_eval)
+                predictions_batch_eval = self(x_eval)
+                loss_batch_eval = self.criterion(predictions_batch_eval, y_target_eval)
 
             # eval loss computed after the optimizing step, as it should for better consistency
             self.losses.append(loss_batch.item())

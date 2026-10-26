@@ -487,7 +487,10 @@ class Transformer(nn.Module):
             self.optimizer.zero_grad()
 
             predictions_batch = self(x, y)
-            loss_batch = self.criterion(predictions_batch.transpose(1, 2), y_target) # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
+            loss_batch = self.criterion(predictions_batch.transpose(1, 2), y_target) 
+            # CrossEntropy wants batch, vocab, sequence and not batch, sequence, vocab
+            # so one needs to transpose the last two indices
+            # other losses (e.g. MSELoss) do not want this
             
             loss_batch.backward()
             self.optimizer.step()

@@ -1488,6 +1488,10 @@ perduto;perdido
 pere;peras
 permessi;permisos
 permesso;permiso
+perplessa;perpleja
+perplesse;perplejas
+perplessi;perplejos
+perplesso;perplejo
 personaggi;personajes
 personaggio;personaje
 personale;personal

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import math
 
 
 # roughly trying to follow the structure of the "Attention is all you need" paper https://arxiv.org/abs/1706.03762
@@ -12,8 +13,13 @@ import numpy as np
 
 # TO ADD: windowing function
 # key_padding_mask still needed for sequences of different length?
+# add data loader or mini-batches
 
-# large number of variables, first apply dimensional reduction?
+# max_len = 20 hard limit, need to mke sure windowing fct never produced longer windows
+# large number of variables, first apply dimensional reduction?. not necessary, nn.Linear is already a learnt reduction. PCA only needed in extreme cases
+# in the future it should run with time steps of different lengths: need to compute sin/cos from the timestamps
+
+# Last-token forecasting: use only x_encoded[:, -1] to preserve causality
 
 
 class PositionalEncodingModule(nn.Module):
@@ -72,7 +78,7 @@ class FeedForward(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    # embedding and position encoding to be applied before calling the encoder
+
     def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
 
@@ -106,7 +112,6 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, d_model:int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
 
-        # d_model embedding dimension
         self.dk = dk
         self.dv = dv
         self.d_model = d_model
@@ -132,7 +137,7 @@ class MultiHeadAttention(nn.Module):
         K = self.WK(x).view(batch_length, sequence_length, self.h, self.dk).transpose(-3, -2)
         V = self.WV(x).view(batch_length, sequence_length, self.h, self.dv).transpose(-3, -2)
 
-        matt = torch.matmul(Q, K.transpose(-2,-1)) / np.sqrt(self.dk) 
+        matt = torch.matmul(Q, K.transpose(-2,-1)) / math.sqrt(self.dk) 
         # transpose(-2,-1): swap the last 2 dims (corresponds to K^T in the attention formula)
 
         matt_softmax = torch.softmax(matt, -1) # softmax is applied within each row, so on the last dim 
@@ -153,7 +158,7 @@ class MultiHeadAttention(nn.Module):
 
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, n_features, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, hidden_dim_over_d_model = 4, lr = 0.01, scheduler_step_size = 100, use_weight_decay = False, reporting = 100, dropout: float = 0.1):
+    def __init__(self, d_model, n_features, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, hidden_dim_over_d_model = 4, lr = 0.001, scheduler_step_size = 100, use_weight_decay = False, reporting = 100, dropout: float = 0.1):
         # for starters start with a light model, just to check its workings
 
         super().__init__()
@@ -198,7 +203,7 @@ class Transformer(nn.Module):
 
         x = x.to(self.device)
 
-        x_embedded_pos = self.dropout(self.pos_encoding(self.embed(x)*np.sqrt(self.d_model)))
+        x_embedded_pos = self.dropout(self.pos_encoding(self.embed(x)))
         x_encoded = self.encoder(x_embedded_pos)
           
         return self.exit_linear_projection(x_encoded)
@@ -225,6 +230,7 @@ class Transformer(nn.Module):
             loss_batch = self.criterion(predictions_batch, y_target) 
 
             loss_batch.backward()
+            grad_norm = torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
             self.optimizer.step()
             self.scheduler.step()
 

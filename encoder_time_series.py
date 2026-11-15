@@ -24,6 +24,9 @@ import math
 # horizon longer than 1
 
 
+# CHECK RELATIVE SIZE OF POSITIONAL ENCODING
+
+
 class PositionalEncodingModule(nn.Module):
     # defined as module with a buffer for better efficiency (wrt to a function)
     # precomputes the encoding once up to max_len and slices it per forward call,
@@ -179,6 +182,11 @@ class Transformer(nn.Module):
         self.n_layers = n_layers
         self.feedforward_hidden_dim = hidden_dim_over_d_model * d_model # 4 in 1706.03762 paper 
 
+        # initialize std and mean. this is a simpler version: better to use register_buffer
+        self.mean = torch.zeros(n_features)
+        self.std = torch.ones(n_features)
+        self.normalization_set = False
+
         self.pos_encoding = PositionalEncodingModule(d_model, max_len=max_len)
 
         self.embed = nn.Linear(n_features, d_model) # use "embed" name, since adapted from model handling text
@@ -225,14 +233,17 @@ class Transformer(nn.Module):
         self.epochs = np.arange(n_epochs)
         self.losses = []
         self.losses_eval = []
+        self.grad_norms = [] # for checks on the effect of clipping
 
         # note that the input must be tensors (assumed by float())
-        x = x.float().to(self.device)
-        y_target = y_target.float().to(self.device)
-        x_eval = x_eval.float().to(self.device)
-        y_target_eval = y_target_eval.float().to(self.device)
+        x = torch.as_tensor(x, dtype=torch.float32, device=self.device)
+        y_target = torch.as_tensor(y_target, dtype=torch.float32, device=self.device)
+        x_eval = torch.as_tensor(x_eval, dtype=torch.float32, device=self.device)
+        y_target_eval = torch.as_tensor(y_target_eval, dtype=torch.float32, device=self.device)
 
-        self.set_normalization(x.mean(dim=(0, 1)), x.std(dim=(0, 1)))
+        if self.normalization_set == False: # do not change the normalization with later fit calls
+            self.set_normalization(x.mean(dim=(0, 1)), x.std(dim=(0, 1)))
+            self.normalization_set = True
         # independently normalize different features (structure (batch, length, n_features))
 
         # apply normalization
@@ -265,9 +276,10 @@ class Transformer(nn.Module):
             # eval loss computed after the optimizing step, as it should for better consistency
             self.losses.append(loss_batch.item())
             self.losses_eval.append(loss_batch_eval.item())
+            self.grad_norms.append(grad_norm.item())
 
             if epoch % self.reporting == 0:
-                print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item(), " loss_eval = ", loss_batch_eval.item())
+                print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item(), " loss_eval = ", loss_batch_eval.item(), "grad_norm =", grad_norm.item())
 
 
     @torch.no_grad() # turns off gradient tracking if predict is called

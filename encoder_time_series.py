@@ -21,6 +21,8 @@ import math
 
 # Last-token forecasting: use only x_encoded[:, -1] to preserve causality
 
+# horizon longer than 1
+
 
 class PositionalEncodingModule(nn.Module):
     # defined as module with a buffer for better efficiency (wrt to a function)
@@ -202,11 +204,11 @@ class Transformer(nn.Module):
             x = x.unsqueeze(0)
 
         x = x.to(self.device)
-
         x_embedded_pos = self.dropout(self.pos_encoding(self.embed(x)))
         x_encoded = self.encoder(x_embedded_pos)
           
-        return self.exit_linear_projection(x_encoded)
+        return self.exit_linear_projection(x_encoded[:, -1, :])
+        # [:, -1]: last token forecasting
 
 
     def fit(self, x, y_target, x_eval, y_target_eval, n_epochs: int = 1000):
@@ -249,13 +251,29 @@ class Transformer(nn.Module):
                 print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item(), " loss_eval = ", loss_batch_eval.item())
 
 
+    def set_normalization(self, mean, std):
+        # mean, std: per-feature statistics of the TRAINING data, shape (n_features,)
+        self.mean = torch.as_tensor(mean, dtype=torch.float32, device=self.device)
+        self.std = torch.as_tensor(std, dtype=torch.float32, device=self.device).clamp_min(1e-8)
+
+
+    @torch.no_grad() # turns off gradient tracking if predict is called
     def predict(self, x):
-        # TO DO
         # eval_mode, no grad, denormalize output
-        pass
+        self.eval()
+
+        # TO DO: add guardrails, if mean not None etc. for the moment this is a cleaner and simpler code
+        x = torch.as_tensor(x, dtype=torch.float32, device=self.device)
+        x = (x - self.mean) / self.std
+        out = self(x)
+        out = out * self.std + self.mean   # broadcasts over the last (feature) dim
+        return out.cpu()
+
 
     def fit_from_series(self, series):
         # TO DO
+
+        # TO DO: use set_normalization with the training data
         pass
 
 

@@ -164,7 +164,6 @@ class EncoderLayer(nn.Module):
         # define two norms with independent parameters (gamma and beta, see https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html):
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model) 
-
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, key_padding_mask = None):
@@ -185,7 +184,6 @@ class DecoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(d_model) 
         self.norm2 = nn.LayerNorm(d_model)
         self.norm3 = nn.LayerNorm(d_model) 
-
         self.dropout = nn.Dropout(dropout)
     
     def forward(self, x, y, x_padding_mask = None, y_padding_mask = None):

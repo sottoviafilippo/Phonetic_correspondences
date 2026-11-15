@@ -79,37 +79,6 @@ class FeedForward(nn.Module):
         return self.network(x)
 
 
-class EncoderLayer(nn.Module):
-
-    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
-        super().__init__()
-
-        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, dropout=dropout)
-        self.fforward = FeedForward(d_model, d_hidden, dropout=dropout)
-        # define two norms with independent parameters (gamma and beta, see https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html):
-        self.norm1 = nn.LayerNorm(d_model) 
-        self.norm2 = nn.LayerNorm(d_model) 
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        attention_output = self.mhattention(x)
-        x_and_attention = self.norm1(x + self.dropout(attention_output)) # add and norm
-        return self.norm2(x_and_attention + self.dropout(self.fforward(x_and_attention))) # add and norm
-
-
-class Encoder(nn.Module):
-    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
-        # n_layers: number of times the encoder is repeated. in the original paper it was equal to 6
-        super().__init__()
-
-        self.encoder = nn.ModuleList([EncoderLayer(d_model, d_hidden, dk, dv, h, dropout=dropout) for i in range(n_layers)])
-
-    def forward(self, x):
-        for enc in self.encoder:
-            x = enc(x)
-        return x
-
-
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model:int, dk:int, dv: int, h: int, dropout: float = 0.1):
         super().__init__()
@@ -158,9 +127,41 @@ class MultiHeadAttention(nn.Module):
         return self.WO(softmax_mult_V)
 
 
+
+class EncoderLayer(nn.Module):
+
+    def __init__(self, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
+        super().__init__()
+
+        self.mhattention = MultiHeadAttention(d_model, dk, dv, h, dropout=dropout)
+        self.fforward = FeedForward(d_model, d_hidden, dropout=dropout)
+        # define two norms with independent parameters (gamma and beta, see https://docs.pytorch.org/docs/2.14/generated/torch.nn.LayerNorm.html):
+        self.norm1 = nn.LayerNorm(d_model) 
+        self.norm2 = nn.LayerNorm(d_model) 
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        attention_output = self.mhattention(x)
+        x_and_attention = self.norm1(x + self.dropout(attention_output)) # add and norm
+        return self.norm2(x_and_attention + self.dropout(self.fforward(x_and_attention))) # add and norm
+
+
+class Encoder(nn.Module):
+    def __init__(self, n_layers: int, d_model:int, d_hidden: int, dk:int, dv: int, h: int, dropout: float = 0.1):
+        # n_layers: number of times the encoder is repeated. in the original paper it was equal to 6
+        super().__init__()
+
+        self.encoder = nn.ModuleList([EncoderLayer(d_model, d_hidden, dk, dv, h, dropout=dropout) for i in range(n_layers)])
+
+    def forward(self, x):
+        for enc in self.encoder:
+            x = enc(x)
+        return x
+
+
 class Transformer(nn.Module):
 
-    def __init__(self, d_model, n_features, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, hidden_dim_over_d_model = 4, lr = 0.001, scheduler_step_size = 100, use_weight_decay = False, reporting = 100, dropout: float = 0.1):
+    def __init__(self, d_model, n_features, dk, dv, max_len = 20, n_heads = 4, n_layers = 2, hidden_dim_over_d_model = 4, lr = 0.001, scheduler_step_size = 500, use_weight_decay = False, reporting = 100, dropout: float = 0.1):
         # for starters start with a light model, just to check its workings
 
         super().__init__()
@@ -190,7 +191,7 @@ class Transformer(nn.Module):
         if use_weight_decay: 
             self.optimizer = torch.optim.AdamW(self.parameters(), lr=lr,weight_decay=1e-2)
 
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_step_size, gamma=0.5)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=scheduler_step_size, gamma=0.2)
         self.criterion = nn.MSELoss() 
         
         self.to(self.device)
@@ -211,6 +212,12 @@ class Transformer(nn.Module):
         # [:, -1]: last token forecasting
 
 
+    def set_normalization(self, mean, std):
+        # mean, std: per-feature statistics of the TRAINING data, shape (n_features,)
+        self.mean = torch.as_tensor(mean, dtype=torch.float32, device=self.device)
+        self.std = torch.as_tensor(std, dtype=torch.float32, device=self.device).clamp_min(1e-8)
+
+
     def fit(self, x, y_target, x_eval, y_target_eval, n_epochs: int = 1000):
         # x: input
         # y_target: expected outcomes
@@ -219,16 +226,28 @@ class Transformer(nn.Module):
         self.losses = []
         self.losses_eval = []
 
-        x = x.to(self.device)
-        y_target = y_target.to(self.device)
-        x_eval = x_eval.to(self.device)
-        y_target_eval = y_target_eval.to(self.device)
+        # note that the input must be tensors (assumed by float())
+        x = x.float().to(self.device)
+        y_target = y_target.float().to(self.device)
+        x_eval = x_eval.float().to(self.device)
+        y_target_eval = y_target_eval.float().to(self.device)
+
+        self.set_normalization(x.mean(dim=(0, 1)), x.std(dim=(0, 1)))
+        # independently normalize different features (structure (batch, length, n_features))
+
+        # apply normalization
+        x = (x - self.mean) / self.std
+        x_eval = (x_eval - self.mean) / self.std
+        # normalize the output, too
+        y_target = (y_target - self.mean) / self.std
+        y_target_eval = (y_target_eval - self.mean) / self.std
+
 
         for epoch in range(n_epochs):
             self.train()
             self.optimizer.zero_grad()
 
-            predictions_batch = self(x)
+            predictions_batch = self(x) 
             loss_batch = self.criterion(predictions_batch, y_target) 
 
             loss_batch.backward()
@@ -240,7 +259,7 @@ class Transformer(nn.Module):
             # note that the training loss is computed with dropout on, which may make it noisier
 
             with torch.no_grad():
-                predictions_batch_eval = self(x_eval)
+                predictions_batch_eval = self(x_eval) 
                 loss_batch_eval = self.criterion(predictions_batch_eval, y_target_eval)
 
             # eval loss computed after the optimizing step, as it should for better consistency
@@ -249,12 +268,6 @@ class Transformer(nn.Module):
 
             if epoch % self.reporting == 0:
                 print("Epoch ", epoch, "/", n_epochs, " loss = ", loss_batch.item(), " loss_eval = ", loss_batch_eval.item())
-
-
-    def set_normalization(self, mean, std):
-        # mean, std: per-feature statistics of the TRAINING data, shape (n_features,)
-        self.mean = torch.as_tensor(mean, dtype=torch.float32, device=self.device)
-        self.std = torch.as_tensor(std, dtype=torch.float32, device=self.device).clamp_min(1e-8)
 
 
     @torch.no_grad() # turns off gradient tracking if predict is called
@@ -273,7 +286,6 @@ class Transformer(nn.Module):
     def fit_from_series(self, series):
         # TO DO
 
-        # TO DO: use set_normalization with the training data
         pass
 
 
